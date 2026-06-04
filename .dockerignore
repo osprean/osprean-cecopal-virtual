@@ -1,0 +1,48 @@
+# VCS
+.git/
+.gitignore
+.github/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.egg-info/
+
+# Node
+node_modules/
+frontend/dist/
+.pnpm-store/
+
+# Tests (no entran a imagen prod)
+backend/tests/
+frontend/tests/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+
+# Docs / dev
+*.md
+!backend/README.md
+!frontend/README.md
+docker-compose.dev.yml
+Makefile
+.pre-commit-config.yaml
+.env
+.env.local
+.env.*.local
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Misc
+*.log

@@ -1,0 +1,81 @@
+[project]
+name = "cecovi-backend"
+version = "0.1.0"
+description = "CECOVI (CECOPAL Virtual) — backend FastAPI de gestión de emergencia en curso"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "sqlalchemy[asyncio]>=2.0.35",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.3",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.5.2",
+    "pyjwt>=2.9.0",
+    "bcrypt>=4.2.0",
+    "python-multipart>=0.0.12",
+    "httpx>=0.27.2",
+    "structlog>=24.4.0",
+    "email-validator>=2.2.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.3",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.6.9",
+    "mypy>=1.11.2",
+    "aiosqlite>=0.20.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "C4", "UP", "SIM", "RUF", "PL"]
+ignore = [
+    "PLR0913",  # too many args — FastAPI deps lo justifican
+    "PLR2004",  # magic values en tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["PLR2004", "S101"]
+"alembic/env.py" = ["E402"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["alembic/versions"]
+
+[[tool.mypy.overrides]]
+module = ["jwt.*", "bcrypt.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/main.py", "alembic/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = false

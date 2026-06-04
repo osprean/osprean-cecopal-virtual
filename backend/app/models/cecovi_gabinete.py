@@ -37,9 +37,9 @@ class CecoviGabPublicacion(Base):
     emergencia_id: Mapped[int] = mapped_column(
         ForeignKey("cecovi_emergencia.id"), nullable=False, index=True
     )
-    # Referencias lógicas (mismo esquema CECOVI): comunicado de dirección + canal.
-    comunicado_id: Mapped[int | None] = mapped_column(Integer)
-    canal_id: Mapped[int | None] = mapped_column(Integer)
+    # FK reales intra-CECOVI (misma DB, sin borrados): comunicado de dirección + canal.
+    comunicado_id: Mapped[int | None] = mapped_column(ForeignKey("cecovi_dir_comunicado.id"))
+    canal_id: Mapped[int | None] = mapped_column(ForeignKey("cecovi_gab_canal.id"))
     estado: Mapped[str] = mapped_column(String(16), nullable=False, server_default="draft")
     reach: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(

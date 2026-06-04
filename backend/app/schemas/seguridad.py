@@ -126,6 +126,8 @@ class RecursoComaconRead(BaseModel):
     name: str
     status: str | None
     kind: str
+    lat: float | None = None
+    lng: float | None = None
 
 
 class LogRead(BaseModel):

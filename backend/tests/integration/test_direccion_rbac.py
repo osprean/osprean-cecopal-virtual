@@ -68,6 +68,36 @@ async def test_direccion_solo_lectura(client: AsyncClient, db_session: AsyncSess
         clear_email_override()
 
 
+async def test_direccion_evacuacion(client: AsyncClient) -> None:
+    fake = await alta(client, "dir-ev")
+    try:
+        jefe = await login(client, "dir-ev", fake, "jefa@x.es")
+        ev = {
+            "name": "Ruta norte",
+            "estimated_people": 50,
+            "route_points": [{"lat": 39.4, "lng": -0.3}],
+        }
+        r = await client.post(
+            "/api/v1/emergencias/dir-ev/direccion/evacuaciones", json=ev, headers=jefe
+        )
+        assert r.status_code == 201, r.text
+        eid = r.json()["id"]
+        assert r.json()["estado"] == "planned"
+        r = await client.post(
+            f"/api/v1/emergencias/dir-ev/direccion/evacuaciones/{eid}/evacuados",
+            json={"evacuated_people": 20},
+            headers=jefe,
+        )
+        assert r.status_code == 200 and r.json()["evacuated_people"] == 20
+        acciones = {
+            x["accion"]
+            for x in (await client.get("/api/v1/emergencias/dir-ev/logs", headers=jefe)).json()
+        }
+        assert {"direccion:evacuacion_creada", "direccion:evacuacion_evacuados"} <= acciones
+    finally:
+        clear_email_override()
+
+
 async def test_direccion_aislamiento(client: AsyncClient) -> None:
     fa = await alta(client, "dir-a")
     try:

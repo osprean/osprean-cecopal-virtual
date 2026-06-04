@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -84,6 +85,30 @@ class AlbergueRead(BaseModel):
     capacity: int
     occupancy: int
     estado: str
+
+
+class EvacuacionCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    albergue_id: int | None = None
+    estimated_people: int = Field(default=0, ge=0)
+    route_points: list[dict[str, Any]] | None = None
+
+
+class EvacuacionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    emergencia_id: int
+    name: str
+    estado: str
+    albergue_id: int | None
+    estimated_people: int
+    evacuated_people: int
+    route_points: list[Any] | None
+    started_at: datetime | None
+
+
+class EvacuadosUpdate(BaseModel):
+    evacuated_people: int = Field(ge=0)
 
 
 class EstadoUpdate(BaseModel):

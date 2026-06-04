@@ -7,8 +7,9 @@ comunicados y albergues. Toda fila lleva `emergencia_id` (I6).
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -84,6 +85,26 @@ class CecoviDirAlbergue(Base):
     capacity: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     occupancy: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     estado: Mapped[str] = mapped_column(String(16), nullable=False, server_default="operational")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class CecoviDirEvacuacion(Base):
+    __tablename__ = "cecovi_dir_evacuacion"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    emergencia_id: Mapped[int] = mapped_column(
+        ForeignKey("cecovi_emergencia.id"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    estado: Mapped[str] = mapped_column(String(14), nullable=False, server_default="planned")
+    # Albergue destino (FK real intra-CECOVI; sin cascada, el cierre archiva por estado).
+    albergue_id: Mapped[int | None] = mapped_column(ForeignKey("cecovi_dir_albergue.id"))
+    estimated_people: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    evacuated_people: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    route_points: Mapped[list[Any] | None] = mapped_column(JSON)  # [{lat,lng}] (ruta)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -170,16 +170,17 @@ async def test_recursos_comacon_solo_lectura_acotado_por_org(
         text(
             "CREATE TABLE IF NOT EXISTS inventory_element ("
             "resource_id INTEGER PRIMARY KEY, name VARCHAR, status VARCHAR, "
-            "kind VARCHAR, organization_id INTEGER)"
+            "kind VARCHAR, organization_id INTEGER, lat FLOAT, lng FLOAT)"
         )
     )
     await db_session.execute(text("DELETE FROM inventory_element"))
     await db_session.execute(
         text(
-            "INSERT INTO inventory_element (resource_id,name,status,kind,organization_id) VALUES "
-            "(1,'Camion A','available','transport_resource',1),"
-            "(2,'Brigada B','assigned','human_resource',1),"
-            "(3,'Ajeno','available','human_resource',2)"
+            "INSERT INTO inventory_element "
+            "(resource_id,name,status,kind,organization_id,lat,lng) VALUES "
+            "(1,'Camion A','available','transport_resource',1,39.47,-0.37),"
+            "(2,'Brigada B','assigned','human_resource',1,39.48,-0.38),"
+            "(3,'Ajeno','available','human_resource',2,40.0,-3.0)"
         )
     )
     await db_session.commit()
@@ -189,8 +190,12 @@ async def test_recursos_comacon_solo_lectura_acotado_por_org(
         await _select(client, "rec-1", seg, ["seguridad"])
         r = await client.get("/api/v1/emergencias/rec-1/recursos", headers=seg)
         assert r.status_code == 200, r.text
-        nombres = sorted(x["name"] for x in r.json())
+        recursos = r.json()
+        nombres = sorted(x["name"] for x in recursos)
         assert nombres == ["Brigada B", "Camion A"]  # solo org 1, NO 'Ajeno' (org 2)
+        # lat/lng renderables para el mapa
+        camion = next(x for x in recursos if x["name"] == "Camion A")
+        assert camion["lat"] == 39.47 and camion["lng"] == -0.37
     finally:
         app.dependency_overrides.pop(get_email_sender, None)
         await db_session.execute(text("DROP TABLE IF EXISTS inventory_element"))

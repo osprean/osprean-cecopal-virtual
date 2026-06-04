@@ -5,6 +5,7 @@ from app.models.cecovi_credencial import CecoviCredencial
 from app.models.cecovi_direccion import (
     CecoviDirAlbergue,
     CecoviDirComunicado,
+    CecoviDirEvacuacion,
     CecoviDirGrupo,
     CecoviDirSolicitudMedios,
 )
@@ -34,6 +35,7 @@ __all__ = [
     "CecoviCredencial",
     "CecoviDirAlbergue",
     "CecoviDirComunicado",
+    "CecoviDirEvacuacion",
     "CecoviDirGrupo",
     "CecoviDirSolicitudMedios",
     "CecoviEmergencia",

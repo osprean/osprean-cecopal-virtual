@@ -18,6 +18,7 @@ from app.deps import DbSession
 from app.models.cecovi_direccion import (
     CecoviDirAlbergue,
     CecoviDirComunicado,
+    CecoviDirEvacuacion,
     CecoviDirGrupo,
     CecoviDirSolicitudMedios,
 )
@@ -30,6 +31,9 @@ from app.schemas.direccion import (
     ComunicadoCreate,
     ComunicadoRead,
     EstadoUpdate,
+    EvacuacionCreate,
+    EvacuacionRead,
+    EvacuadosUpdate,
     GrupoCreate,
     GrupoRead,
     OcupacionUpdate,
@@ -232,3 +236,73 @@ async def ocupacion_albergue(
     await db.commit()
     await db.refresh(row)
     return AlbergueRead.model_validate(row)
+
+
+# --- evacuaciones ---
+@router.get(f"{P}/evacuaciones", response_model=list[EvacuacionRead])
+async def list_evacuaciones(
+    emergencia: EmergenciaCtx, _p: Ver, db: DbSession
+) -> list[EvacuacionRead]:
+    rows = await OperativoRepo(db).list_for(CecoviDirEvacuacion, emergencia.id)
+    return [EvacuacionRead.model_validate(r) for r in rows]
+
+
+@router.post(
+    f"{P}/evacuaciones", response_model=EvacuacionRead, status_code=status.HTTP_201_CREATED
+)
+async def crear_evacuacion(
+    emergencia: EmergenciaCtx, principal: Operar, payload: EvacuacionCreate, db: DbSession
+) -> EvacuacionRead:
+    row = CecoviDirEvacuacion(emergencia_id=emergencia.id, **payload.model_dump())
+    await OperativoRepo(db).add(row)
+    await audit(
+        db,
+        emergencia_id=emergencia.id,
+        actor_id=principal.id,
+        accion="direccion:evacuacion_creada",
+        payload={"id": row.id, "name": row.name},
+    )
+    await db.commit()
+    return EvacuacionRead.model_validate(row)
+
+
+@router.post(f"{P}/evacuaciones/{{eid}}/estado", response_model=EvacuacionRead)
+async def estado_evacuacion(
+    emergencia: EmergenciaCtx, principal: Operar, eid: int, payload: EstadoUpdate, db: DbSession
+) -> EvacuacionRead:
+    repo = OperativoRepo(db)
+    row = await repo.get_for(CecoviDirEvacuacion, emergencia.id, eid)
+    if row is None:
+        raise NotFoundError("Evacuación no encontrada", code="evacuacion_not_found")
+    row.estado = payload.estado
+    await audit(
+        db,
+        emergencia_id=emergencia.id,
+        actor_id=principal.id,
+        accion="direccion:evacuacion_estado",
+        payload={"id": eid, "estado": payload.estado},
+    )
+    await db.commit()
+    await db.refresh(row)
+    return EvacuacionRead.model_validate(row)
+
+
+@router.post(f"{P}/evacuaciones/{{eid}}/evacuados", response_model=EvacuacionRead)
+async def evacuados_evacuacion(
+    emergencia: EmergenciaCtx, principal: Operar, eid: int, payload: EvacuadosUpdate, db: DbSession
+) -> EvacuacionRead:
+    repo = OperativoRepo(db)
+    row = await repo.get_for(CecoviDirEvacuacion, emergencia.id, eid)
+    if row is None:
+        raise NotFoundError("Evacuación no encontrada", code="evacuacion_not_found")
+    row.evacuated_people = payload.evacuated_people
+    await audit(
+        db,
+        emergencia_id=emergencia.id,
+        actor_id=principal.id,
+        accion="direccion:evacuacion_evacuados",
+        payload={"id": eid, "evacuated": payload.evacuated_people},
+    )
+    await db.commit()
+    await db.refresh(row)
+    return EvacuacionRead.model_validate(row)

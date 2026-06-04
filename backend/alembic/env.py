@@ -32,7 +32,7 @@ CECOVI_TABLE_PREFIX = "cecovi_"
 CECOVI_VERSION_TABLE = "alembic_version_cecovi"
 
 
-def include_object(obj, name, type_, reflected, compare_to):  # noqa: ANN001, ANN201
+def include_object(obj, name, type_, reflected, compare_to):
     """Solo deja pasar tablas `cecovi_*` (e índices/columnas que cuelgan de ellas)."""
     if type_ == "table":
         return name.startswith(CECOVI_TABLE_PREFIX)

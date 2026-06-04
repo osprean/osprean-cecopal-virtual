@@ -5,7 +5,6 @@ import type {
   DrawingMode,
   GeoPoint,
   ID,
-  Incident,
   Perimeter,
   PerimeterKind,
   PerimeterShape,
@@ -13,13 +12,10 @@ import type {
   SecurityActivity,
   SecurityActivityType,
 } from "../types";
-import {
-  mockAccessControls,
-  mockPerimeters,
-  mockRoadBlocks,
-  mockSecurityActivities,
-} from "../mocks";
 import { reverseGeocode } from "../services";
+import { cecoviApi } from "../services/cecoviApi";
+import { useAuthStore } from "../auth/authStore";
+import { accesoFromApi, corteFromApi, perimetroFromApi, perimetroToApi } from "./cecoviMappers";
 import { useIncidentsStore } from "./incidentsStore";
 
 const newId = (prefix: string) =>
@@ -31,6 +27,8 @@ const midpoint = (a: GeoPoint, b: GeoPoint): GeoPoint => ({
   lat: (a.lat + b.lat) / 2,
   lng: (a.lng + b.lng) / 2,
 });
+
+const slug = () => useAuthStore.getState().slug ?? "";
 
 interface ClosureGeocode {
   road: string | null;
@@ -52,11 +50,12 @@ interface SeguridadState {
 
   closureGeocode: ClosureGeocode;
 
-  // Sub-modo del perímetro: polígono (vértices) o círculo (centro + radio).
   perimeterShape: PerimeterShape;
   circleCenter: GeoPoint | null;
-  circleRadius: number; // metros (0 mientras no se haya confirmado)
-  circlePreviewRadius: number; // metros — actualizado con el ratón antes del 2º click
+  circleRadius: number;
+  circlePreviewRadius: number;
+
+  cargar: () => Promise<void>;
 
   setMode: (mode: DrawingMode) => void;
   cancelDrawing: () => void;
@@ -69,9 +68,14 @@ interface SeguridadState {
   setCircleRadius: (radius: number) => void;
   setCirclePreviewRadius: (radius: number) => void;
 
-  createPerimeter: (input: { kind: PerimeterKind; label: string; level: 1 | 2 | 3; color?: string }) => void;
-  liftPerimeter: (id: ID) => void;
-  removePerimeter: (id: ID) => void;
+  createPerimeter: (input: {
+    kind: PerimeterKind;
+    label: string;
+    level: 1 | 2 | 3;
+    color?: string;
+  }) => Promise<void>;
+  liftPerimeter: (id: ID) => Promise<void>;
+  removePerimeter: (id: ID) => Promise<void>;
 
   createAccessControl: (input: {
     kind: AccessControl["kind"];
@@ -79,16 +83,16 @@ interface SeguridadState {
     state: AccessControlState;
     units?: number;
     reason?: string;
-  }) => void;
-  setAccessState: (id: ID, state: AccessControlState) => void;
-  removeAccessControl: (id: ID) => void;
+  }) => Promise<void>;
+  setAccessState: (id: ID, state: AccessControlState) => Promise<void>;
+  removeAccessControl: (id: ID) => Promise<void>;
 
-  createClosure: (input: { road: string; km?: string; reason: string }) => void;
-  liftClosure: (id: ID) => void;
-  removeClosure: (id: ID) => void;
+  createClosure: (input: { road: string; km?: string; reason: string }) => Promise<void>;
+  liftClosure: (id: ID) => Promise<void>;
+  removeClosure: (id: ID) => Promise<void>;
 
   registerEvacuation: (input: { count: number; from: string; toShelter: string }) => void;
-  registerIncident: (input: { title: string; notes: string }) => void;
+  registerIncident: (input: { title: string; notes: string }) => Promise<void>;
 
   pushActivity: (
     type: SecurityActivityType,
@@ -98,20 +102,15 @@ interface SeguridadState {
   ) => void;
 }
 
-const EMPTY_GEOCODE: ClosureGeocode = {
-  road: null,
-  locality: null,
-  loading: false,
-  error: null,
-};
+const EMPTY_GEOCODE: ClosureGeocode = { road: null, locality: null, loading: false, error: null };
 
 let geocodeAbort: AbortController | null = null;
 
 export const useSeguridadStore = create<SeguridadState>((set, get) => ({
-  perimeters: mockPerimeters,
-  accessControls: mockAccessControls,
-  closures: mockRoadBlocks,
-  activities: mockSecurityActivities,
+  perimeters: [],
+  accessControls: [],
+  closures: [],
+  activities: [],
 
   mode: "idle",
   drawingPoints: [],
@@ -123,6 +122,23 @@ export const useSeguridadStore = create<SeguridadState>((set, get) => ({
   circleCenter: null,
   circleRadius: 0,
   circlePreviewRadius: 0,
+
+  // Carga el estado real desde el backend (fuente de verdad).
+  cargar: async () => {
+    const s = slug();
+    if (!s) return;
+    const [perimetros, accesos, cortes] = await Promise.all([
+      cecoviApi.seg.listPerimetros(s),
+      cecoviApi.seg.listAccesos(s),
+      cecoviApi.seg.listCortes(s),
+    ]);
+    set({
+      perimeters: perimetros.map(perimetroFromApi),
+      accessControls: accesos.map(accesoFromApi),
+      closures: cortes.map(corteFromApi),
+    });
+    await useIncidentsStore.getState().cargar();
+  },
 
   setMode: (mode) =>
     set((s) => ({
@@ -163,21 +179,16 @@ export const useSeguridadStore = create<SeguridadState>((set, get) => ({
 
   addDrawingPoint: (point) => {
     const { mode, drawingPoints } = get();
-
-    // CLOSURE: 2 points (A then B). Trigger reverse geocode after first point.
     if (mode === "closure") {
       if (drawingPoints.length >= 2) return;
       const next = [...drawingPoints, point];
       set({ drawingPoints: next });
-
       if (next.length === 1) {
-        // Geocode the start point in background — by the time B is placed
-        // the road name is usually ready.
         geocodeAbort?.abort();
         geocodeAbort = new AbortController();
         set({ closureGeocode: { ...EMPTY_GEOCODE, loading: true } });
         reverseGeocode(point, geocodeAbort.signal)
-          .then((res) => {
+          .then((res) =>
             set({
               closureGeocode: {
                 road: res.road,
@@ -185,8 +196,8 @@ export const useSeguridadStore = create<SeguridadState>((set, get) => ({
                 loading: false,
                 error: null,
               },
-            });
-          })
+            }),
+          )
           .catch((err) => {
             if ((err as Error).name === "AbortError") return;
             set({
@@ -201,9 +212,6 @@ export const useSeguridadStore = create<SeguridadState>((set, get) => ({
       }
       return;
     }
-
-    // PERIMETER POLYGON: any number of points.
-    // PERIMETER CIRCLE: handled by SeguridadMapLayers (center + radius) — no-op here.
     const shape = get().perimeterShape;
     if (mode === "perimeter" && shape === "polygon") {
       set({ drawingPoints: [...drawingPoints, point] });
@@ -211,103 +219,75 @@ export const useSeguridadStore = create<SeguridadState>((set, get) => ({
   },
 
   setPendingPoint: (point) => set({ pendingPoint: point }),
-
   selectEntity: (id) => set({ selectedId: id }),
 
-  createPerimeter: ({ kind, label, level, color }) => {
+  createPerimeter: async ({ kind, label, level, color }) => {
     const { perimeterShape, drawingPoints, circleCenter, circleRadius } = get();
-    const id = newId("per");
-    let perimeter: Perimeter;
-
     if (perimeterShape === "circle") {
       if (!circleCenter || circleRadius <= 0) return;
-      perimeter = {
-        id,
-        emergencyId: "emg-001",
-        kind,
-        label,
-        points: [],
-        level,
-        status: "active",
-        createdAt: nowIso(),
-        shape: "circle",
-        center: circleCenter,
-        radius: circleRadius,
-        color,
-      };
-    } else {
-      if (drawingPoints.length < 3) return;
-      perimeter = {
-        id,
-        emergencyId: "emg-001",
-        kind,
-        label,
-        points: drawingPoints,
-        level,
-        status: "active",
-        createdAt: nowIso(),
-        shape: "polygon",
-        color,
-      };
+    } else if (drawingPoints.length < 3) {
+      return;
     }
-
+    const payload = perimetroToApi({
+      kind,
+      label,
+      shape: perimeterShape,
+      points: drawingPoints,
+      center: circleCenter,
+      radius: circleRadius,
+      level,
+      color,
+    });
+    const created = perimetroFromApi(await cecoviApi.seg.crearPerimetro(slug(), payload));
     set((s) => ({
-      perimeters: [perimeter, ...s.perimeters],
+      perimeters: [created, ...s.perimeters],
       mode: "idle",
       drawingPoints: [],
       circleCenter: null,
       circleRadius: 0,
       circlePreviewRadius: 0,
     }));
-    const sizeNote =
-      perimeterShape === "circle"
-        ? ` (radio ${Math.round(circleRadius)} m)`
-        : "";
+    const sizeNote = perimeterShape === "circle" ? ` (radio ${Math.round(circleRadius)} m)` : "";
     get().pushActivity(
       "perimeter-created",
       `Perímetro ${kind.toUpperCase()} "${label}" creado (Nivel ${level})${sizeNote}.`,
-      id,
+      created.id,
     );
   },
 
-  liftPerimeter: (id) =>
-    set((s) => {
-      const p = s.perimeters.find((x) => x.id === id);
-      if (p) {
-        get().pushActivity("perimeter-lifted", `Perímetro "${p.label}" levantado.`, id);
-      }
-      return {
-        perimeters: s.perimeters.map((x) => (x.id === id ? { ...x, status: "lifted" } : x)),
-      };
-    }),
+  liftPerimeter: async (id) => {
+    await cecoviApi.seg.estadoPerimetro(slug(), Number(id), "lifted");
+    const p = get().perimeters.find((x) => x.id === id);
+    if (p) get().pushActivity("perimeter-lifted", `Perímetro "${p.label}" levantado.`, id);
+    set((s) => ({
+      perimeters: s.perimeters.map((x) => (x.id === id ? { ...x, status: "lifted" } : x)),
+    }));
+  },
 
-  removePerimeter: (id) =>
-    set((s) => {
-      const p = s.perimeters.find((x) => x.id === id);
-      if (p) {
-        get().pushActivity("perimeter-lifted", `Perímetro "${p.label}" eliminado.`, id);
-      }
-      return { perimeters: s.perimeters.filter((x) => x.id !== id) };
-    }),
+  removePerimeter: async (id) => {
+    // Sin borrado físico (I7/I8): equivale a levantar.
+    await get().liftPerimeter(id);
+  },
 
-  createAccessControl: ({ kind, label, state, units, reason }) => {
+  createAccessControl: async ({ kind, label, state, units, reason }) => {
     const point = get().pendingPoint;
     if (!point) return;
-    const id = newId(kind === "checkpoint" ? "ck" : "ac");
-    const ac: AccessControl = {
-      id,
-      emergencyId: "emg-001",
-      kind,
-      label,
-      state,
-      units,
-      reason,
-      location: point,
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    };
+    const created = accesoFromApi(
+      await cecoviApi.seg.crearAcceso(slug(), {
+        kind,
+        label,
+        lat: point.lat,
+        lng: point.lng,
+        units,
+        reason,
+      }),
+    );
+    if (state !== created.state) {
+      await cecoviApi.seg.estadoAcceso(slug(), Number(created.id), state);
+      created.state = state;
+    }
     set((s) => ({
-      accessControls: [ac, ...s.accessControls],
+      accessControls: [created, ...s.accessControls],
       mode: "idle",
       pendingPoint: null,
     }));
@@ -316,90 +296,65 @@ export const useSeguridadStore = create<SeguridadState>((set, get) => ({
       kind === "checkpoint"
         ? `Control "${label}" desplegado (${units ?? 0} efectivos).`
         : `Acceso "${label}" registrado.`,
-      id,
+      created.id,
     );
   },
 
-  setAccessState: (id, state) =>
-    set((s) => {
-      const ac = s.accessControls.find((x) => x.id === id);
-      if (ac) {
-        get().pushActivity(
-          "access-changed",
-          `${ac.label} cambiado a ${state.toUpperCase()}.`,
-          id,
-        );
-      }
-      return {
-        accessControls: s.accessControls.map((x) =>
-          x.id === id ? { ...x, state, updatedAt: nowIso() } : x,
-        ),
-      };
-    }),
-
-  removeAccessControl: (id) =>
+  setAccessState: async (id, state) => {
+    await cecoviApi.seg.estadoAcceso(slug(), Number(id), state);
+    const ac = get().accessControls.find((x) => x.id === id);
+    if (ac) get().pushActivity("access-changed", `${ac.label} cambiado a ${state.toUpperCase()}.`, id);
     set((s) => ({
-      accessControls: s.accessControls.filter((x) => x.id !== id),
-    })),
+      accessControls: s.accessControls.map((x) =>
+        x.id === id ? { ...x, state, updatedAt: nowIso() } : x,
+      ),
+    }));
+  },
 
-  createClosure: ({ road, km, reason }) => {
+  removeAccessControl: async (id) => {
+    await cecoviApi.seg.estadoAcceso(slug(), Number(id), "closed");
+    set((s) => ({
+      accessControls: s.accessControls.map((x) => (x.id === id ? { ...x, state: "closed" } : x)),
+    }));
+  },
+
+  createClosure: async ({ road, km, reason }) => {
     const points = get().drawingPoints;
     if (points.length < 2) return;
     const [a, b] = points;
-    const id = newId("rb");
-    const closure: RoadBlock = {
-      id,
-      emergencyId: "emg-001",
-      road,
-      km,
-      location: midpoint(a, b),
-      segment: { from: a, to: b },
-      reason,
-      status: "active",
-      createdAt: nowIso(),
-    };
+    const mid = midpoint(a, b);
+    const created = corteFromApi(
+      await cecoviApi.seg.crearCorte(slug(), {
+        road,
+        km,
+        lat: mid.lat,
+        lng: mid.lng,
+        segment: { from: a, to: b },
+        reason,
+      }),
+    );
     set((s) => ({
-      closures: [closure, ...s.closures],
+      closures: [created, ...s.closures],
       mode: "idle",
       drawingPoints: [],
       closureGeocode: EMPTY_GEOCODE,
     }));
-    get().pushActivity(
-      "street-closed",
-      `${road}${km ? ` km ${km}` : ""} cortada — ${reason}.`,
-      id,
-    );
+    get().pushActivity("street-closed", `${road}${km ? ` km ${km}` : ""} cortada — ${reason}.`, created.id);
   },
 
-  liftClosure: (id) =>
-    set((s) => {
-      const c = s.closures.find((x) => x.id === id);
-      if (c) {
-        get().pushActivity(
-          "street-opened",
-          `${c.road}${c.km ? ` km ${c.km}` : ""} reabierta al tráfico.`,
-          id,
-        );
-      }
-      return {
-        closures: s.closures.map((x) => (x.id === id ? { ...x, status: "lifted" } : x)),
-      };
-    }),
+  liftClosure: async (id) => {
+    await cecoviApi.seg.estadoCorte(slug(), Number(id), "lifted");
+    const c = get().closures.find((x) => x.id === id);
+    if (c) get().pushActivity("street-opened", `${c.road}${c.km ? ` km ${c.km}` : ""} reabierta al tráfico.`, id);
+    set((s) => ({ closures: s.closures.map((x) => (x.id === id ? { ...x, status: "lifted" } : x)) }));
+  },
 
-  removeClosure: (id) =>
-    set((s) => {
-      const c = s.closures.find((x) => x.id === id);
-      if (c) {
-        get().pushActivity(
-          "street-opened",
-          `${c.road}${c.km ? ` km ${c.km}` : ""} eliminada.`,
-          id,
-        );
-      }
-      return { closures: s.closures.filter((x) => x.id !== id) };
-    }),
+  removeClosure: async (id) => {
+    await get().liftClosure(id);
+  },
 
   registerEvacuation: ({ count, from, toShelter }) => {
+    // La evacuación como entidad vive en dirección; seguridad solo deja traza.
     const id = newId("ev");
     set({ mode: "idle", pendingPoint: null });
     get().pushActivity(
@@ -409,61 +364,33 @@ export const useSeguridadStore = create<SeguridadState>((set, get) => ({
     );
   },
 
-  registerIncident: ({ title, notes }) => {
+  registerIncident: async ({ title, notes }) => {
     const point = get().pendingPoint;
     if (!point) return;
-    const id = newId("inc");
-    const incident: Incident = {
-      id,
-      emergencyId: "emg-001",
+    await useIncidentsStore.getState().crearIncidencia({
       title,
-      type: "security",
+      tipo: "security",
       severity: "medium",
-      status: "active",
-      reportedAt: nowIso(),
-      location: point,
+      lat: point.lat,
+      lng: point.lng,
       description: notes,
-      assignedResources: [],
-    };
-    useIncidentsStore.getState().upsertIncident(incident);
+    });
     set({ mode: "idle", pendingPoint: null });
-    get().pushActivity("incident-reported", `${title}${notes ? ` — ${notes}` : ""}`, id);
+    get().pushActivity("incident-reported", `${title}${notes ? ` — ${notes}` : ""}`);
   },
 
   pushActivity: (type, message, refId, performedBy = "Sgto. Núñez · SEG") =>
     set((s) => ({
       activities: [
-        {
-          id: newId("sec-act"),
-          type,
-          message,
-          performedBy,
-          timestamp: nowIso(),
-          refId,
-        },
+        { id: newId("sec-act"), type, message, performedBy, timestamp: nowIso(), refId },
         ...s.activities,
       ].slice(0, 80),
     })),
 }));
 
-// Persist any user-created perimeters / accesos / cierres en localStorage.
-// Mocks iniciales se ignoran — solo se guardan las marcas nuevas.
-if (typeof window !== "undefined") {
-  // Lazy import to avoid SSR pitfalls and keep the store file lean.
-  void import("../utils/mapPersistence").then(({ bindMapPersistence }) => {
-    bindMapPersistence("seg", useSeguridadStore, {
-      perimeters: mockPerimeters,
-      accessControls: mockAccessControls,
-      closures: mockRoadBlocks,
-    });
-  });
-}
-
 export const selectActivePerimeters = (s: SeguridadState) =>
   s.perimeters.filter((p) => p.status === "active");
-
 export const selectActiveClosures = (s: SeguridadState) =>
   s.closures.filter((c) => c.status === "active" || c.status === "intermittent");
-
 export const selectClosedAccess = (s: SeguridadState) =>
   s.accessControls.filter((a) => a.state === "closed").length;

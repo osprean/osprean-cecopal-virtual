@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Box, Flex } from "@chakra-ui/react";
+import { useSeguridadStore } from "../../store";
 import {
   MapDrawingLayer,
   MapDrawingToolbar,
@@ -26,6 +27,13 @@ export const SeguridadPage = () => {
   const [perimeterFinalizeOpen, setPerimeterFinalizeOpen] = useState(false);
   // Lateral colapsado por defecto — el mapa ocupa todo el ancho al iniciar.
   const [sideOpen, setSideOpen] = useState(false);
+
+  // Carga el estado real de seguridad (perímetros/accesos/cortes/incidencias)
+  // desde el backend al montar la vista.
+  const cargar = useSeguridadStore((s) => s.cargar);
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
 
   return (
     <Flex direction="column" h="100%" w="100%" minH={0} bg="#F8FAFC" overflow="hidden">

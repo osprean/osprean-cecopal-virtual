@@ -71,18 +71,51 @@ export interface Me {
   roles: string[];
 }
 
+// Recurso de COMACON (solo lectura) con coordenadas renderables.
+export interface RecursoComacon {
+  resource_id: number;
+  name: string;
+  status: string | null;
+  kind: string;
+  lat: number | null;
+  lng: number | null;
+}
+
+const post = <T>(path: string, body: unknown) =>
+  apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+
 export const cecoviApi = {
-  login: (slug: string, token: string) =>
-    apiFetch<TokenOut>(`${base(slug)}/auth/login`, {
-      method: "POST",
-      body: JSON.stringify({ token }),
-    }),
+  login: (slug: string, token: string) => post<TokenOut>(`${base(slug)}/auth/login`, { token }),
   me: (slug: string) => apiFetch<Me>(`${base(slug)}/auth/me`),
   catalogoRoles: (slug: string) =>
     apiFetch<{ seleccionables: string[] }>(`${base(slug)}/roles/catalogo`),
   seleccionarRoles: (slug: string, roles: string[]) =>
-    apiFetch<Me>(`${base(slug)}/roles/seleccion`, {
-      method: "POST",
-      body: JSON.stringify({ roles }),
-    }),
+    post<Me>(`${base(slug)}/roles/seleccion`, { roles }),
+
+  // Recursos COMACON (solo lectura, acotado por org de la emergencia).
+  recursos: (slug: string) => apiFetch<RecursoComacon[]>(`${base(slug)}/recursos`),
+
+  // --- seguridad ---
+  seg: {
+    listPerimetros: (slug: string) => apiFetch<any[]>(`${base(slug)}/seguridad/perimetros`),
+    crearPerimetro: (slug: string, body: unknown) =>
+      post<any>(`${base(slug)}/seguridad/perimetros`, body),
+    estadoPerimetro: (slug: string, id: number, estado: string) =>
+      post<any>(`${base(slug)}/seguridad/perimetros/${id}/estado`, { estado }),
+    listAccesos: (slug: string) => apiFetch<any[]>(`${base(slug)}/seguridad/accesos`),
+    crearAcceso: (slug: string, body: unknown) =>
+      post<any>(`${base(slug)}/seguridad/accesos`, body),
+    estadoAcceso: (slug: string, id: number, estado: string) =>
+      post<any>(`${base(slug)}/seguridad/accesos/${id}/estado`, { estado }),
+    listCortes: (slug: string) => apiFetch<any[]>(`${base(slug)}/seguridad/cortes`),
+    crearCorte: (slug: string, body: unknown) =>
+      post<any>(`${base(slug)}/seguridad/cortes`, body),
+    estadoCorte: (slug: string, id: number, estado: string) =>
+      post<any>(`${base(slug)}/seguridad/cortes/${id}/estado`, { estado }),
+    listIncidencias: (slug: string) => apiFetch<any[]>(`${base(slug)}/seguridad/incidencias`),
+    crearIncidencia: (slug: string, body: unknown) =>
+      post<any>(`${base(slug)}/seguridad/incidencias`, body),
+    estadoIncidencia: (slug: string, id: number, estado: string) =>
+      post<any>(`${base(slug)}/seguridad/incidencias/${id}/estado`, { estado }),
+  },
 };

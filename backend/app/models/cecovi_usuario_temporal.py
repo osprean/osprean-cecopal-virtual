@@ -32,9 +32,16 @@ class CecoviUsuarioTemporal(Base):
     nivel: Mapped[str] = mapped_column(String(20), nullable=False, server_default="cecopal")
 
     # Degradación a solo lectura tras transferir el mando (I3; se usa en F4).
-    solo_lectura: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # default=False (Python) además del server_default: en SQLite un
+    # server_default string "false" se lee como truthy, así que el ORM debe
+    # insertar el bool real.
+    solo_lectura: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     # La selección de roles, una vez confirmada, es inmutable (I4).
-    roles_confirmados: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    roles_confirmados: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

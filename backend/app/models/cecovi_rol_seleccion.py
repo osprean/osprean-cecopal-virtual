@@ -32,7 +32,9 @@ class CecoviRolSeleccion(Base):
     )
 
     rol: Mapped[str] = mapped_column(String(40), nullable=False)
-    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    activo: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
     confirmada_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

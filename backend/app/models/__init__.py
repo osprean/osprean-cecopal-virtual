@@ -9,6 +9,11 @@ from app.models.cecovi_direccion import (
 )
 from app.models.cecovi_emergencia import CecoviEmergencia
 from app.models.cecovi_log import CecoviLog
+from app.models.cecovi_logistica import (
+    CecoviLogiServicio,
+    CecoviLogiSolicitud,
+    CecoviLogiSuministro,
+)
 from app.models.cecovi_rol_seleccion import CecoviRolSeleccion
 from app.models.cecovi_sanitario import CecoviSanAlerta, CecoviSanVictima, CecoviSanZona
 from app.models.cecovi_seguridad import (
@@ -29,6 +34,9 @@ __all__ = [
     "CecoviDirSolicitudMedios",
     "CecoviEmergencia",
     "CecoviLog",
+    "CecoviLogiServicio",
+    "CecoviLogiSolicitud",
+    "CecoviLogiSuministro",
     "CecoviRolSeleccion",
     "CecoviSanAlerta",
     "CecoviSanVictima",

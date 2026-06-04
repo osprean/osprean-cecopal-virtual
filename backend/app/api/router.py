@@ -9,6 +9,7 @@ from app.api.v1 import (
     direccion,
     emergencias,
     items,
+    logistica,
     recursos,
     sanitario,
     seguridad,
@@ -24,3 +25,4 @@ api_router.include_router(recursos.router)
 api_router.include_router(seguridad.router)
 api_router.include_router(direccion.router)
 api_router.include_router(sanitario.router)
+api_router.include_router(logistica.router)

@@ -1,70 +1,18 @@
-import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
-import { AuthProvider } from "@/components/AuthProvider";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { LoginPage } from "@/pages/LoginPage";
-import { MePage } from "@/pages/MePage";
-import { ItemsPage } from "@/pages/ItemsPage";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { ProtectedApp } from "./auth/ProtectedApp";
+import { LandingView } from "./pages/cecovi/LandingView";
 
-function Shell({ children }: { children: React.ReactNode }) {
+// Enrutado por path = identificador de emergencia. La app operativa vive bajo
+// /{idEmergencia}; el acceso (login por credencial → /me → selección de roles)
+// lo gestiona ProtectedApp.
+const App = () => {
   return (
-    <div>
-      <nav
-        style={{
-          padding: 12,
-          borderBottom: "1px solid #eee",
-          fontFamily: "system-ui",
-          display: "flex",
-          gap: 12,
-        }}
-      >
-        <Link to="/">Inicio</Link>
-        <Link to="/items">Items</Link>
-        <Link to="/me">Perfil</Link>
-      </nav>
-      {children}
-    </div>
+    <Routes>
+      <Route path="/:idEmergencia/*" element={<ProtectedApp />} />
+      <Route path="/" element={<LandingView />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
-}
+};
 
-export function App() {
-  return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Shell>
-                  <Navigate to="/items" replace />
-                </Shell>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/items"
-            element={
-              <ProtectedRoute>
-                <Shell>
-                  <ItemsPage />
-                </Shell>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/me"
-            element={
-              <ProtectedRoute>
-                <Shell>
-                  <MePage />
-                </Shell>
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
-  );
-}
+export default App;

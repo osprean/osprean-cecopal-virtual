@@ -1,0 +1,1 @@
+export { SanitarioPage } from "./SanitarioPage";

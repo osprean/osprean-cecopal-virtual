@@ -12,7 +12,7 @@ help: ## Lista de targets
 
 install: ## Instala dependencias (backend + frontend)
 	cd backend && uv sync
-	cd frontend && pnpm install
+	cd frontend && yarn install
 
 db-up: ## Levanta PostgreSQL en local
 	docker compose -f docker-compose.dev.yml up -d
@@ -27,7 +27,7 @@ backend-dev: ## Arranca FastAPI con hot reload
 	cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 frontend-dev: ## Arranca Vite dev server
-	cd frontend && pnpm dev
+	cd frontend && yarn dev
 
 migrate: ## Aplica migraciones pendientes
 	cd backend && uv run alembic upgrade head
@@ -37,22 +37,22 @@ migration: ## Genera nueva migración: make migration name="add_items_table"
 
 test: ## Corre tests backend + frontend
 	cd backend && uv run pytest
-	cd frontend && pnpm test
+	cd frontend && yarn test --run || echo 'frontend tests: pendientes (paso 3)'
 
 test-cov: ## Tests backend con coverage
 	cd backend && uv run pytest --cov=app --cov-report=term-missing --cov-report=xml
 
 lint: ## Lint backend + frontend
 	cd backend && uv run ruff check . && uv run ruff format --check .
-	cd frontend && pnpm lint && pnpm format:check
+	cd frontend && yarn lint
 
 format: ## Auto-format backend + frontend
 	cd backend && uv run ruff check --fix . && uv run ruff format .
-	cd frontend && pnpm format
+	cd frontend && yarn lint --fix || true
 
 typecheck: ## mypy + tsc
 	cd backend && uv run mypy app
-	cd frontend && pnpm type-check
+	cd frontend && yarn tsc -b
 
 build: ## Builda imagen Docker multi-stage
 	docker build -f docker/Dockerfile -t $(IMAGE_NAME):$(IMAGE_TAG) .

@@ -1,0 +1,1 @@
+export { LogisticaPage } from "./LogisticaPage";

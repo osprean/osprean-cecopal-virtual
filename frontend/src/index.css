@@ -1,0 +1,104 @@
+@font-face {
+  font-family: "Osprean";
+  src: url("./assets/osprean.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  background: #f7f9fc;
+  color: #1a202c;
+}
+
+.leaflet-container {
+  background: #eef2f6 !important;
+  font-family: "Inter", sans-serif;
+  /* Sin foco visible ni borde alrededor del mapa. Leaflet añade
+     `outline-offset: 1px` por defecto y los navegadores pintan focus rings
+     que se ven como un borde oscuro alrededor del mapa al hacer clic en él. */
+  outline: none !important;
+  outline-offset: 0 !important;
+  border: none !important;
+  /*
+   * Aísla el stacking context del mapa para que los z-indexes internos de
+   * Leaflet (panes ≤700, controls ≤1000) jamás escapen del contenedor y
+   * compitan con drawers, sheets, FABs o modales globales.
+   */
+  isolation: isolate;
+  /* Asegura que el propio contenedor del mapa sea un nivel bajo respecto al
+     resto de UI absoluta encima (FAB 1100, sheet 1150, drawer 1200). */
+  z-index: 0;
+}
+
+.leaflet-container:focus,
+.leaflet-container:focus-visible,
+.leaflet-container *:focus,
+.leaflet-container *:focus-visible {
+  outline: none !important;
+}
+
+.leaflet-control-layers {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  color: #1a202c;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  box-shadow: 0 8px 24px rgba(15, 22, 36, 0.12) !important;
+}
+
+.leaflet-control-layers-expanded {
+  padding: 10px 12px;
+}
+
+.leaflet-control-layers-list label {
+  color: #1a202c;
+  font-weight: 600;
+}
+
+.leaflet-control-layers-separator {
+  border-top-color: #edf0f4 !important;
+}
+
+.leaflet-bar {
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(15, 22, 36, 0.10) !important;
+}
+
+.leaflet-bar a {
+  background: #ffffff !important;
+  color: #1a202c !important;
+  border-bottom-color: #edf0f4 !important;
+}
+
+.leaflet-bar a:hover {
+  background: #f7f9fc !important;
+  color: #319795 !important;
+}
+
+.tactical-marker,
+.tactical-resource-marker,
+.tactical-cp-marker,
+.tactical-shelter-marker,
+.tactical-roadblock-marker,
+.tactical-access-marker,
+.tactical-drawing-marker {
+  background: transparent !important;
+  border: none !important;
+}

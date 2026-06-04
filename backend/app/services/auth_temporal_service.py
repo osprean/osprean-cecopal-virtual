@@ -50,8 +50,13 @@ class AuthTemporalService:
             raise AuthError("Credencial inválida", code="bad_credential")
         if cred.estado in ("revocada", "expirada"):
             raise AuthError("Credencial no válida", code="credential_revoked")
-        if cred.expira_at is not None and datetime.now(UTC) > cred.expira_at:
-            raise AuthError("Credencial caducada", code="credential_expired")
+        if cred.expira_at is not None:
+            # SQLite no preserva tzinfo; normalizamos a UTC para comparar.
+            expira = cred.expira_at
+            if expira.tzinfo is None:
+                expira = expira.replace(tzinfo=UTC)
+            if datetime.now(UTC) > expira:
+                raise AuthError("Credencial caducada", code="credential_expired")
         if not self._hasher.verify(secreto, cred.token_hash):
             raise AuthError("Credencial inválida", code="bad_credential")
 

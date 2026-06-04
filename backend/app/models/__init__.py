@@ -1,6 +1,12 @@
 """Modelos ORM. Importar aquí cada modelo para que Alembic los detecte."""
 
 from app.models.cecovi_credencial import CecoviCredencial
+from app.models.cecovi_direccion import (
+    CecoviDirAlbergue,
+    CecoviDirComunicado,
+    CecoviDirGrupo,
+    CecoviDirSolicitudMedios,
+)
 from app.models.cecovi_emergencia import CecoviEmergencia
 from app.models.cecovi_log import CecoviLog
 from app.models.cecovi_rol_seleccion import CecoviRolSeleccion
@@ -16,6 +22,10 @@ from app.models.user import User
 
 __all__ = [
     "CecoviCredencial",
+    "CecoviDirAlbergue",
+    "CecoviDirComunicado",
+    "CecoviDirGrupo",
+    "CecoviDirSolicitudMedios",
     "CecoviEmergencia",
     "CecoviLog",
     "CecoviRolSeleccion",

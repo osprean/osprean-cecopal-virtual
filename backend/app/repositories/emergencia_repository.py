@@ -23,3 +23,24 @@ class EmergenciaRepository:
 
     async def get_by_id(self, emergencia_id: int) -> CecoviEmergencia | None:
         return await self._session.get(CecoviEmergencia, emergencia_id)
+
+    async def create(
+        self,
+        *,
+        organization_id: int,
+        comacon_emergency_id: int | None,
+        slug: str,
+        modo: str,
+    ) -> CecoviEmergencia:
+        em = CecoviEmergencia(
+            organization_id=organization_id,
+            comacon_emergency_id=comacon_emergency_id,
+            slug=slug,
+            modo=modo,
+            estado="activa",
+            nivel="cecopal",
+        )
+        self._session.add(em)
+        await self._session.flush()
+        await self._session.refresh(em)
+        return em

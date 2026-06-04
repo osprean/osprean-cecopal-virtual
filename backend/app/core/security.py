@@ -7,8 +7,9 @@ en deps; los endpoints de /auth no se tocan (más allá de quitar /register).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 import bcrypt
 import jwt
@@ -28,10 +29,15 @@ class PasswordHasher(Protocol):
 
 
 class TokenService(Protocol):
-    def create_access_token(self, subject: str) -> str: ...
+    def create_access_token(
+        self, subject: str, *, extra_claims: Mapping[str, Any] | None = None
+    ) -> str: ...
     def create_refresh_token(self, subject: str) -> str: ...
     def decode(self, token: str, *, expected_type: TokenType) -> str:
         """Devuelve el `sub` o lanza AuthError."""
+
+    def decode_claims(self, token: str, *, expected_type: TokenType) -> dict[str, Any]:
+        """Devuelve el payload completo (claims) o lanza AuthError."""
 
 
 # ---------- Implementaciones por defecto (local) -----------------------------
@@ -69,23 +75,38 @@ class JwtTokenService:
         self._access_minutes = access_minutes
         self._refresh_days = refresh_days
 
-    def _encode(self, subject: str, token_type: TokenType, delta: timedelta) -> str:
+    def _encode(
+        self,
+        subject: str,
+        token_type: TokenType,
+        delta: timedelta,
+        extra_claims: Mapping[str, Any] | None = None,
+    ) -> str:
         now = datetime.now(UTC)
-        payload = {
+        payload: dict[str, Any] = {
             "sub": subject,
             "iat": int(now.timestamp()),
             "exp": int((now + delta).timestamp()),
             "type": token_type,
         }
+        if extra_claims:
+            # Claims reservados no se pisan con extra_claims.
+            for key, value in extra_claims.items():
+                if key not in payload:
+                    payload[key] = value
         return jwt.encode(payload, self._secret, algorithm=self._alg)
 
-    def create_access_token(self, subject: str) -> str:
-        return self._encode(subject, "access", timedelta(minutes=self._access_minutes))
+    def create_access_token(
+        self, subject: str, *, extra_claims: Mapping[str, Any] | None = None
+    ) -> str:
+        return self._encode(
+            subject, "access", timedelta(minutes=self._access_minutes), extra_claims
+        )
 
     def create_refresh_token(self, subject: str) -> str:
         return self._encode(subject, "refresh", timedelta(days=self._refresh_days))
 
-    def decode(self, token: str, *, expected_type: TokenType) -> str:
+    def decode_claims(self, token: str, *, expected_type: TokenType) -> dict[str, Any]:
         try:
             payload = jwt.decode(token, self._secret, algorithms=[self._alg])
         except jwt.ExpiredSignatureError as exc:
@@ -95,11 +116,13 @@ class JwtTokenService:
 
         if payload.get("type") != expected_type:
             raise AuthError("Wrong token type", code="token_invalid")
-
-        sub = payload.get("sub")
-        if not isinstance(sub, str):
+        if not isinstance(payload.get("sub"), str):
             raise AuthError("Invalid token subject", code="token_invalid")
-        return sub
+        return payload
+
+    def decode(self, token: str, *, expected_type: TokenType) -> str:
+        payload = self.decode_claims(token, expected_type=expected_type)
+        return str(payload["sub"])
 
 
 # ---------- Factories (singleton-ish, recreables en tests) -------------------

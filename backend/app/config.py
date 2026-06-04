@@ -34,6 +34,16 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # --- CECOVI ---------------------------------------------------------------
+    # Secreto compartido para el webhook de confirmación de emergencia desde
+    # COMACON (cabecera X-Webhook-Secret). OBLIGATORIO sobrescribir en prod.
+    COMACON_WEBHOOK_SECRET: str = Field(default="dev-webhook-secret-change-me")
+    # Vida de una credencial temporal (horas) desde su emisión.
+    CREDENCIAL_EXPIRE_HOURS: int = 720
+    # En modo simulacro, los emails se enrutan aquí en vez de a los contactos
+    # reales. Si está vacío, en simulacro NO se envía a destinatarios reales.
+    SIMULACRO_EMAIL_SINK: str = ""
+
     FRONTEND_DIST_PATH: str = "/app/frontend/dist"
 
     CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(default_factory=list)

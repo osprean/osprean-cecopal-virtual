@@ -8,6 +8,7 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.email import EmailSender, build_email_sender
 from app.core.exceptions import AuthError
 from app.core.security import (
     PasswordHasher,
@@ -32,8 +33,13 @@ def get_password_hasher() -> PasswordHasher:
     return build_password_hasher()
 
 
+def get_email_sender() -> EmailSender:
+    return build_email_sender()
+
+
 TokenSvc = Annotated[TokenService, Depends(get_token_service)]
 Hasher = Annotated[PasswordHasher, Depends(get_password_hasher)]
+EmailSenderDep = Annotated[EmailSender, Depends(get_email_sender)]
 
 
 async def get_current_user(

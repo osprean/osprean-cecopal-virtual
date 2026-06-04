@@ -26,6 +26,9 @@ class CecoviUsuarioTemporal(Base):
 
     nombre: Mapped[str] = mapped_column(String(120), nullable=False)
     email: Mapped[str] = mapped_column(String(256), nullable=False)
+    # Sale del nodo CECOPAL → human_resource.phone_number en COMACON. Sin normalizar
+    # (E.164 cuando se monte SMS/cámara). Ver docs de integración en comacon_web_backend.
+    telefono: Mapped[str | None] = mapped_column(String(32), nullable=True)
     nivel: Mapped[str] = mapped_column(String(20), nullable=False, server_default="cecopal")
 
     # Degradación a solo lectura tras transferir el mando (I3; se usa en F4).

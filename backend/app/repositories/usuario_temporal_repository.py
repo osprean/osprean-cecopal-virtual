@@ -15,12 +15,20 @@ class UsuarioTemporalRepository:
         self._session = session
 
     async def create(
-        self, *, emergencia_id: int, nombre: str, email: str, nivel: str, roles_confirmados: bool
+        self,
+        *,
+        emergencia_id: int,
+        nombre: str,
+        email: str,
+        telefono: str | None,
+        nivel: str,
+        roles_confirmados: bool,
     ) -> CecoviUsuarioTemporal:
         u = CecoviUsuarioTemporal(
             emergencia_id=emergencia_id,
             nombre=nombre,
             email=email,
+            telefono=telefono,
             nivel=nivel,
             roles_confirmados=roles_confirmados,
         )

@@ -89,6 +89,7 @@ class EmergenciaService:
                 emergencia_id=emergencia.id,
                 nombre=p.nombre,
                 email=p.email,
+                telefono=p.telefono,
                 nivel=p.nivel,
                 # El jefe se designa: su rol queda fijado (confirmado) ya.
                 roles_confirmados=es_jefe,

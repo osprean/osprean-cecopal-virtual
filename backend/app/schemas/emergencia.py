@@ -28,7 +28,9 @@ class ParticipanteIn(BaseModel):
 
     nombre: str = Field(min_length=1, max_length=120)
     email: EmailStr
+    telefono: str | None = Field(default=None, max_length=32)
     nivel: str = Field(default="cecopal", pattern="^(cecopal|pma)$")
+    # es_jefe (término CECOVI) se puebla desde es_alcalde del nodo CECOPAL en COMACON.
     es_jefe: bool = False
 
 
@@ -74,6 +76,7 @@ class MeOut(BaseModel):
     usuario_id: int
     emergencia_id: int
     nombre: str
+    telefono: str | None
     nivel: str
     solo_lectura: bool
     roles_confirmados: bool

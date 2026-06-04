@@ -20,7 +20,13 @@ async def _alta(client: AsyncClient, slug: str) -> FakeEmailSender:
         "modo": "real",
         "participantes": [
             {"nombre": "Jefa", "email": "jefa@x.es", "nivel": "cecopal", "es_jefe": True},
-            {"nombre": "Conc", "email": "conc@x.es", "nivel": "cecopal", "es_jefe": False},
+            {
+                "nombre": "Conc",
+                "email": "conc@x.es",
+                "telefono": "+34600000001",
+                "nivel": "cecopal",
+                "es_jefe": False,
+            },
         ],
     }
     r = await client.post("/api/v1/emergencias", json=payload, headers=SECRET)
@@ -96,6 +102,8 @@ async def test_seleccion_roles_libre_y_luego_inmutable(client: AsyncClient) -> N
         me = (await client.get("/api/v1/emergencias/tx-roles/auth/me", headers=h)).json()
         assert me["roles_confirmados"] is False
         assert me["roles"] == []
+        # telefono fluye webhook → cecovi_usuario_temporal → /me.
+        assert me["telefono"] == "+34600000001"
 
         # Elige libremente varios roles.
         r = await client.post(

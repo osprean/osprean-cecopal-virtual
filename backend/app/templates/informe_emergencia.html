@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Informe de emergencia · {{ emergencia.slug }}</title>
+<style>
+  @page { size: A4; margin: 24mm 18mm; }
+  body { font-family: "Helvetica Neue", Arial, sans-serif; color: #1a1a1a; font-size: 11pt; }
+  h1 { font-size: 22pt; margin: 0 0 4pt; color: #b91c1c; }
+  h2 { font-size: 14pt; margin: 18pt 0 6pt; border-bottom: 1pt solid #b91c1c; padding-bottom: 2pt; }
+  .lead { color: #666; margin-bottom: 18pt; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8pt; margin: 6pt 0; }
+  .kv { padding: 6pt 8pt; background: #f5f5f5; border-radius: 4pt; }
+  .kv .k { font-size: 8pt; color: #777; text-transform: uppercase; letter-spacing: 0.5pt; }
+  .kv .v { font-size: 14pt; font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-top: 6pt; }
+  th, td { padding: 4pt 6pt; border-bottom: 1pt solid #ddd; text-align: left; }
+  th { background: #fafafa; color: #555; font-weight: 600; }
+  .badge { display: inline-block; padding: 1pt 6pt; border-radius: 8pt; font-size: 8.5pt; }
+  .badge-ok { background: #dcfce7; color: #166534; }
+  .badge-warn { background: #fef3c7; color: #92400e; }
+  .badge-err { background: #fee2e2; color: #991b1b; }
+  .footer { margin-top: 24pt; padding-top: 6pt; border-top: 1pt solid #ddd; font-size: 8.5pt; color: #888; }
+  .modo-sim { color: #c2410c; font-weight: bold; }
+</style>
+</head>
+<body>
+  <h1>Informe de emergencia</h1>
+  <div class="lead">
+    <strong>{{ emergencia.slug }}</strong>
+    {% if emergencia.modo == "simulacro" %} · <span class="modo-sim">SIMULACRO</span>{% endif %}
+  </div>
+
+  <h2>Resumen</h2>
+  <div class="grid">
+    <div class="kv"><div class="k">Estado</div><div class="v">{{ emergencia.estado }}</div></div>
+    <div class="kv"><div class="k">Modo</div><div class="v">{{ emergencia.modo }}</div></div>
+    <div class="kv"><div class="k">Nivel</div><div class="v">{{ emergencia.nivel }}</div></div>
+    <div class="kv"><div class="k">Duración</div><div class="v">{{ duracion_min if duracion_min is not none else "—" }} min</div></div>
+    <div class="kv"><div class="k">Inicio</div><div class="v">{{ emergencia.created_at.strftime("%Y-%m-%d %H:%M") }}</div></div>
+    <div class="kv"><div class="k">Fin</div><div class="v">{{ emergencia.finalizada_at.strftime("%Y-%m-%d %H:%M") if emergencia.finalizada_at else "—" }}</div></div>
+  </div>
+
+  <h2>Balance operativo</h2>
+  <div class="grid">
+    <div class="kv"><div class="k">Víctimas totales</div><div class="v">{{ victimas_total }}</div></div>
+    <div class="kv"><div class="k">Personas evacuadas</div><div class="v">{{ evacuados_total }}</div></div>
+    <div class="kv"><div class="k">Cortes viales</div><div class="v">{{ cortes_total }}</div></div>
+    <div class="kv"><div class="k">Tareas (compl./tot.)</div><div class="v">{{ tareas_por_estado.get("completed", 0) }} / {{ tareas_total }}</div></div>
+  </div>
+
+  {% if victimas_por_estado %}
+  <h2>Víctimas por estado</h2>
+  <table>
+    <thead><tr><th>Estado</th><th>Cantidad</th></tr></thead>
+    <tbody>
+    {% for estado, n in victimas_por_estado.items() %}
+      <tr><td>{{ estado }}</td><td>{{ n }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <h2>Historial (log)</h2>
+  <table>
+    <thead><tr><th>Hora</th><th>Acción</th><th>Actor</th></tr></thead>
+    <tbody>
+    {% for lg in logs %}
+      <tr>
+        <td>{{ lg.at.strftime("%H:%M:%S") }}</td>
+        <td>{{ lg.accion }}</td>
+        <td>{{ lg.actor_usuario_id or "—" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    Generado el {{ generated_at.strftime("%Y-%m-%d %H:%M") }} UTC · CECOVI · informe automático.
+  </div>
+</body>
+</html>

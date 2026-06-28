@@ -4,17 +4,16 @@ import { Center, Spinner } from "@chakra-ui/react";
 import { useAuthStore } from "./authStore";
 import { visibleAreas } from "./permissions";
 import { LoginView } from "../pages/cecovi/LoginView";
-import { RoleSelectionView } from "../pages/cecovi/RoleSelectionView";
 import { TacticalLayout } from "../layouts";
 import { TabRouter } from "../features/TabRouter";
 import { useTabsStore } from "../store";
 import type { TabKey } from "../types";
+import { TareasModal, useAutoOpenTareas } from "../components/TareasModal";
 
 // Máquina de estados de acceso a una emergencia /{idEmergencia}:
 //   sin token            → login por credencial
 //   token, cargando /me  → spinner
-//   roles sin confirmar  → selección de roles (I4)
-//   ok                   → app operativa (layout + tabs)
+//   ok (P3: ya no hay paso de "seleccionar roles") → app operativa
 export function ProtectedApp() {
   const { idEmergencia = "" } = useParams();
   const token = useAuthStore((s) => s.token);
@@ -23,6 +22,7 @@ export function ProtectedApp() {
   const loading = useAuthStore((s) => s.loading);
   const loadMe = useAuthStore((s) => s.loadMe);
   const setVisibleAreas = useTabsStore((s) => s.setVisibleAreas);
+  const tareasModal = useAutoOpenTareas();
 
   useEffect(() => {
     if (token && idEmergencia && (!me || slug !== idEmergencia)) {
@@ -30,9 +30,10 @@ export function ProtectedApp() {
     }
   }, [token, idEmergencia, me, slug, loadMe]);
 
-  // RBAC: al confirmar roles, limita las pestañas visibles a las áreas del rol.
+  // RBAC: limita las pestañas visibles a las áreas del rol (los roles vienen
+  // del JWT en P3; ya no hay paso de confirmación).
   useEffect(() => {
-    if (me?.roles_confirmados) {
+    if (me?.roles?.length) {
       setVisibleAreas(visibleAreas(me.roles) as TabKey[]);
     }
   }, [me, setVisibleAreas]);
@@ -45,10 +46,10 @@ export function ProtectedApp() {
       </Center>
     );
   }
-  if (!me.roles_confirmados) return <RoleSelectionView slug={idEmergencia} />;
   return (
     <TacticalLayout>
       <TabRouter />
+      <TareasModal isOpen={tareasModal.isOpen} onClose={tareasModal.onClose} />
     </TacticalLayout>
   );
 }

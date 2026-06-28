@@ -2,6 +2,7 @@ export { useEmergencyStore, selectActiveEmergency } from "./emergencyStore";
 export { useAlertsStore, selectUnacknowledgedCount } from "./alertsStore";
 export { useIncidentsStore } from "./incidentsStore";
 export { useResourcesStore } from "./resourcesStore";
+export { useTareasStore } from "./tareasStore";
 export { useTabsStore } from "./tabsStore";
 export { useRealtimeStore } from "./realtimeStore";
 export {

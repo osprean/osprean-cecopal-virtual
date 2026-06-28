@@ -52,3 +52,6 @@ Thumbs.db
 
 # pyenv (local pin, user-specific)
 .python-version
+/_stuff
+# Email file sink + informes PDF generados localmente (dev).
+backend/var/

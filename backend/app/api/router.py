@@ -8,13 +8,13 @@ from app.api.v1 import (
     auth,
     campo,
     cierre,
-    demo,
     direccion,
     emergencias,
     gabinete,
     items,
     logistica,
     notificaciones,
+    pipeline,
     recursos,
     sanitario,
     seguridad,
@@ -37,4 +37,4 @@ api_router.include_router(gabinete.router)
 api_router.include_router(tareas.router)
 api_router.include_router(notificaciones.router)
 api_router.include_router(cierre.router)
-api_router.include_router(demo.router)
+api_router.include_router(pipeline.router)

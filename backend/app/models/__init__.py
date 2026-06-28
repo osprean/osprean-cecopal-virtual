@@ -12,6 +12,7 @@ from app.models.cecovi_direccion import (
 from app.models.cecovi_emergencia import CecoviEmergencia
 from app.models.cecovi_gabinete import CecoviGabCanal, CecoviGabPublicacion
 from app.models.cecovi_log import CecoviLog
+from app.models.cecovi_notificacion import CecoviNotificacion
 from app.models.cecovi_logistica import (
     CecoviLogiServicio,
     CecoviLogiSolicitud,
@@ -19,6 +20,8 @@ from app.models.cecovi_logistica import (
 )
 from app.models.cecovi_rol_seleccion import CecoviRolSeleccion
 from app.models.cecovi_sanitario import CecoviSanAlerta, CecoviSanVictima, CecoviSanZona
+from app.models.cecovi_sesion import CecoviSesion
+from app.models.cecovi_tarea import CecoviTarea
 from app.models.cecovi_seguridad import (
     CecoviSegAcceso,
     CecoviSegCorte,
@@ -42,6 +45,7 @@ __all__ = [
     "CecoviGabCanal",
     "CecoviGabPublicacion",
     "CecoviLog",
+    "CecoviNotificacion",
     "CecoviLogiServicio",
     "CecoviLogiSolicitud",
     "CecoviLogiSuministro",
@@ -53,6 +57,8 @@ __all__ = [
     "CecoviSegCorte",
     "CecoviSegIncidencia",
     "CecoviSegPerimetro",
+    "CecoviSesion",
+    "CecoviTarea",
     "CecoviUsuarioTemporal",
     "Item",
     "User",

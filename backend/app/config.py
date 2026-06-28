@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     SIMULACRO_EMAIL_SINK: str = ""
 
     FRONTEND_DIST_PATH: str = "/app/frontend/dist"
+    # URL pública del frontend (para enlaces en emails). En dev típicamente
+    # http://localhost:5174; en prod, https://cecovi.osprean.net.
+    PUBLIC_FRONTEND_BASE: str = "http://localhost:5174"
 
     CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(default_factory=list)
 

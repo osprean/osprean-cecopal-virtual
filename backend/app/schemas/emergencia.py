@@ -1,4 +1,11 @@
-"""Schemas de la entidad emergencia y del flujo de alta/acceso (F2)."""
+"""Schemas de la entidad emergencia y del flujo de alta/acceso (F2 + P3/P4).
+
+Cambios P3/P4:
+- El webhook recibe `roles` (lista). Cada rol trae `titular` y `suplentes`.
+- Por cada rol → 1 credencial master (titular) + 1 credencial backup (compartida
+  por los suplentes; quien la use primero queda nominado).
+- `tipo` se devuelve en el login junto con la lista de `roles`.
+"""
 
 from __future__ import annotations
 
@@ -20,18 +27,20 @@ class EmergenciaRead(BaseModel):
 
 
 class ParticipanteIn(BaseModel):
-    """Una entrada del organigrama enviada por COMACON en el webhook.
-
-    COMACON deriva el roster de su organigrama (ver supuesto en el servicio) y
-    marca exactamente UN participante como jefe (`es_jefe`).
-    """
+    """Una persona física que recibe una credencial."""
 
     nombre: str = Field(min_length=1, max_length=120)
     email: EmailStr
     telefono: str | None = Field(default=None, max_length=32)
     nivel: str = Field(default="cecopal", pattern="^(cecopal|pma)$")
-    # es_jefe (término CECOVI) se puebla desde es_alcalde del nodo CECOPAL en COMACON.
-    es_jefe: bool = False
+
+
+class RolIn(BaseModel):
+    """Un rol del CECOPAL con su titular (master) y suplentes (backup)."""
+
+    rol: str = Field(min_length=1, max_length=40)
+    titular: ParticipanteIn
+    suplentes: list[ParticipanteIn] = Field(default_factory=list)
 
 
 class CrearEmergenciaIn(BaseModel):
@@ -41,28 +50,38 @@ class CrearEmergenciaIn(BaseModel):
     comacon_emergency_id: int | None = None
     slug: str = Field(min_length=1, max_length=64, pattern="^[a-z0-9][a-z0-9-]*$")
     modo: str = Field(pattern="^(real|simulacro)$")
-    participantes: list[ParticipanteIn] = Field(min_length=1)
+    roles: list[RolIn] = Field(min_length=1)
 
 
 class EmergenciaCreada(BaseModel):
     id: int
     slug: str
     modo: str
-    n_credenciales: int
-    jefe_usuario_id: int
+    n_master: int
+    n_backup: int
+    direccion_usuario_id: int | None
 
 
 class LoginIn(BaseModel):
-    """Canje de credencial temporal. El token tiene formato `<id>.<secreto>`."""
+    """Canje de credencial temporal. El token tiene formato `<id>.<secreto>`.
+
+    Para credenciales BACKUP compartidas, el login debe incluir `email` para
+    nominar a quién la está usando (se busca entre los suplentes pre-creados al
+    alta).
+    """
 
     token: str = Field(min_length=3)
+    force: bool = False
+    email: EmailStr | None = None
 
 
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     emergencia_id: int
-    nivel: str
+    roles: list[str]
+    tipo: str  # master|backup
+    sesion_id: int
 
 
 class RolSeleccionRead(BaseModel):
@@ -73,14 +92,14 @@ class RolSeleccionRead(BaseModel):
 
 
 class MeOut(BaseModel):
-    usuario_id: int
+    usuario_id: int | None
     emergencia_id: int
-    nombre: str
+    nombre: str | None
     telefono: str | None
-    nivel: str
+    nivel: str | None
     solo_lectura: bool
-    roles_confirmados: bool
     roles: list[str]
+    tipo: str  # master|backup
 
 
 class CatalogoRolesOut(BaseModel):
@@ -88,4 +107,6 @@ class CatalogoRolesOut(BaseModel):
 
 
 class SeleccionRolesIn(BaseModel):
+    """DEPRECADO P3: los roles vienen de la credencial, no se seleccionan."""
+
     roles: list[str] = Field(min_length=1)

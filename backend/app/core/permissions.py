@@ -42,8 +42,12 @@ ALL_PERMS: frozenset[str] = frozenset(
 
 
 def permisos_de_roles(roles: list[str]) -> frozenset[str]:
-    """Permisos efectivos de un conjunto de roles activos. El jefe tiene todos."""
-    if ROL_JEFE in roles:
+    """Permisos efectivos. P3: `direccion` (alcalde) y `jefe` tienen TODO.
+
+    `jefe` se conserva por compat con cecovi_rol_seleccion legacy; `direccion`
+    es el rol que viaja ahora en el JWT del master del área Dirección.
+    """
+    if ROL_JEFE in roles or "direccion" in roles:
         return ALL_PERMS
     perms: set[str] = set()
     for rol in roles:

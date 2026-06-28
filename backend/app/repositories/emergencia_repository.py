@@ -24,6 +24,15 @@ class EmergenciaRepository:
     async def get_by_id(self, emergencia_id: int) -> CecoviEmergencia | None:
         return await self._session.get(CecoviEmergencia, emergencia_id)
 
+    async def get_by_comacon_emergency_id(
+        self, comacon_emergency_id: int
+    ) -> CecoviEmergencia | None:
+        stmt = select(CecoviEmergencia).where(
+            CecoviEmergencia.comacon_emergency_id == comacon_emergency_id
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def create(
         self,
         *,

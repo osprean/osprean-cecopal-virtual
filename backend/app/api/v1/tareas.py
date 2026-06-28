@@ -10,13 +10,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.core.audit import audit
 from app.core.exceptions import AppError, ForbiddenError, NotFoundError
-from app.core.permissions import permisos_de_roles
 from app.deps import DbSession
 from app.models.cecovi_tarea import CecoviTarea
 from app.rbac import require_perm

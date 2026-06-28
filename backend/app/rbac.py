@@ -15,7 +15,6 @@ from collections.abc import Awaitable, Callable
 from app.core.exceptions import ForbiddenError
 from app.core.permissions import permisos_de_roles
 from app.deps import DbSession
-from app.models.cecovi_usuario_temporal import CecoviUsuarioTemporal
 from app.repositories.usuario_temporal_repository import UsuarioTemporalRepository
 from app.tenancy import SessionCtx, SessionDep
 

@@ -10,14 +10,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 
 from app.core.audit import audit
 from app.core.exceptions import AppError, NotFoundError
 from app.deps import DbSession
 from app.rbac import require_perm
-from app.repositories.emergencia_repository import EmergenciaRepository
 from app.schemas.emergencia import EmergenciaRead
 from app.services.informe_service import generar_informe_pdf
 from app.tenancy import EmergenciaCtx, SessionCtx

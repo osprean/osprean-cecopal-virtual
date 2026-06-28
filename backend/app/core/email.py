@@ -9,6 +9,7 @@ añade más adelante reemplazando el emisor; el resto del código no cambia.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC
 from typing import Protocol
 
 from app.core.logging import get_logger
@@ -89,8 +90,8 @@ class FileEmailSender:
         self._base.mkdir(parents=True, exist_ok=True)
 
     def send(self, message: EmailMessage) -> None:
-        from datetime import datetime, timezone
-        ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
+        from datetime import datetime
+        ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S-%f")
         stem = f"{ts}-{message.to.replace('@','_at_')}"
         (self._base / f"{stem}.txt").write_text(
             f"To: {message.to}\nSubject: {message.subject}\n\n{message.body}\n",

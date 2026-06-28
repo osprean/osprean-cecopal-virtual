@@ -18,12 +18,11 @@ Cambios P3:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import Depends
 from sqlalchemy import select
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AuthError, ForbiddenError, NotFoundError
@@ -76,7 +75,7 @@ async def _decode_and_validate_session(
     if sesion is None:
         raise AuthError("Sesión terminada", code="sesion_terminada")
     # ping
-    sesion.last_seen_at = datetime.now(timezone.utc)
+    sesion.last_seen_at = datetime.now(UTC)
     return SessionCtx(
         credencial_id=int(claims["sub"]),
         roles=list(claims.get("roles", [])),

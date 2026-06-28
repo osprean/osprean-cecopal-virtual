@@ -12,22 +12,22 @@ from app.models.cecovi_direccion import (
 from app.models.cecovi_emergencia import CecoviEmergencia
 from app.models.cecovi_gabinete import CecoviGabCanal, CecoviGabPublicacion
 from app.models.cecovi_log import CecoviLog
-from app.models.cecovi_notificacion import CecoviNotificacion
 from app.models.cecovi_logistica import (
     CecoviLogiServicio,
     CecoviLogiSolicitud,
     CecoviLogiSuministro,
 )
+from app.models.cecovi_notificacion import CecoviNotificacion
 from app.models.cecovi_rol_seleccion import CecoviRolSeleccion
 from app.models.cecovi_sanitario import CecoviSanAlerta, CecoviSanVictima, CecoviSanZona
-from app.models.cecovi_sesion import CecoviSesion
-from app.models.cecovi_tarea import CecoviTarea
 from app.models.cecovi_seguridad import (
     CecoviSegAcceso,
     CecoviSegCorte,
     CecoviSegIncidencia,
     CecoviSegPerimetro,
 )
+from app.models.cecovi_sesion import CecoviSesion
+from app.models.cecovi_tarea import CecoviTarea
 from app.models.cecovi_usuario_temporal import CecoviUsuarioTemporal
 from app.models.item import Item
 from app.models.user import User
@@ -45,10 +45,10 @@ __all__ = [
     "CecoviGabCanal",
     "CecoviGabPublicacion",
     "CecoviLog",
-    "CecoviNotificacion",
     "CecoviLogiServicio",
     "CecoviLogiSolicitud",
     "CecoviLogiSuministro",
+    "CecoviNotificacion",
     "CecoviRolSeleccion",
     "CecoviSanAlerta",
     "CecoviSanVictima",

@@ -22,7 +22,9 @@ async def test_solo_direccion_crea_notificacion(client: AsyncClient) -> None:
         r = await client.post("/api/v1/emergencias/notif-1/notificaciones", json=NOTIF, headers=seg)
         assert r.status_code == 403
         jefe = await login(client, "notif-1", fake, "direccion")
-        r = await client.post("/api/v1/emergencias/notif-1/notificaciones", json=NOTIF, headers=jefe)
+        r = await client.post(
+            "/api/v1/emergencias/notif-1/notificaciones", json=NOTIF, headers=jefe
+        )
         assert r.status_code == 201, r.text
         assert r.json()["rol_destino"] == "seguridad"
     finally:
@@ -33,7 +35,9 @@ async def test_rol_destino_la_recibe_y_marca_leida(client: AsyncClient) -> None:
     fake = await alta(client, "notif-2")
     try:
         jefe = await login(client, "notif-2", fake, "direccion")
-        r = await client.post("/api/v1/emergencias/notif-2/notificaciones", json=NOTIF, headers=jefe)
+        r = await client.post(
+            "/api/v1/emergencias/notif-2/notificaciones", json=NOTIF, headers=jefe
+        )
         nid = r.json()["id"]
         # seguridad la ve
         seg = await login(client, "notif-2", fake, "seguridad")
@@ -67,19 +71,13 @@ async def test_polling_since(client: AsyncClient) -> None:
         ts1 = r1.json()["created_at"]
         # Listar con since=ts1 → debería devolver vacío (no hay notifs > ts1).
         seg = await login(client, "notif-3", fake, "seguridad")
-        r = await client.get(
-            f"/api/v1/emergencias/notif-3/notificaciones?since={ts1}", headers=seg
-        )
+        r = await client.get(f"/api/v1/emergencias/notif-3/notificaciones?since={ts1}", headers=seg)
         assert r.json() == []
         # Espera para que la siguiente notificación tenga timestamp > ts1
         # (el filtro server-side usa > estricto).
         await asyncio.sleep(1.1)
-        await client.post(
-            "/api/v1/emergencias/notif-3/notificaciones", json=NOTIF, headers=jefe
-        )
-        r = await client.get(
-            f"/api/v1/emergencias/notif-3/notificaciones?since={ts1}", headers=seg
-        )
+        await client.post("/api/v1/emergencias/notif-3/notificaciones", json=NOTIF, headers=jefe)
+        r = await client.get(f"/api/v1/emergencias/notif-3/notificaciones?since={ts1}", headers=seg)
         assert len(r.json()) == 1
     finally:
         clear_email_override()

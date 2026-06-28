@@ -61,23 +61,21 @@ async def pipeline_state(
         await db.execute(select(CecoviEmergencia).where(CecoviEmergencia.slug == slug))
     ).scalar_one_or_none()
     if em is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="emergencia_no_existe"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="emergencia_no_existe")
 
     creds = (
-        (await db.execute(
-            select(CecoviCredencial).where(CecoviCredencial.emergencia_id == em.id)
-        ))
+        (await db.execute(select(CecoviCredencial).where(CecoviCredencial.emergencia_id == em.id)))
         .scalars()
         .all()
     )
     sesiones = (
-        (await db.execute(
-            select(CecoviSesion)
-            .join(CecoviCredencial, CecoviCredencial.id == CecoviSesion.credencial_id)
-            .where(CecoviCredencial.emergencia_id == em.id)
-        ))
+        (
+            await db.execute(
+                select(CecoviSesion)
+                .join(CecoviCredencial, CecoviCredencial.id == CecoviSesion.credencial_id)
+                .where(CecoviCredencial.emergencia_id == em.id)
+            )
+        )
         .scalars()
         .all()
     )
@@ -85,23 +83,25 @@ async def pipeline_state(
     usuario_ids = [c.usuario_temporal_id for c in creds if c.usuario_temporal_id is not None]
     emails: dict[int, str] = {}
     if usuario_ids:
-        rows = (await db.execute(
-            select(CecoviUsuarioTemporal.id, CecoviUsuarioTemporal.email).where(
-                CecoviUsuarioTemporal.id.in_(usuario_ids)
+        rows = (
+            await db.execute(
+                select(CecoviUsuarioTemporal.id, CecoviUsuarioTemporal.email).where(
+                    CecoviUsuarioTemporal.id.in_(usuario_ids)
+                )
             )
-        )).all()
+        ).all()
         emails = {r[0]: r[1] for r in rows}
 
-    tareas_rows = (await db.execute(
-        select(CecoviTarea.rol, CecoviTarea.estado, func.count().label("n"))
-        .where(CecoviTarea.emergencia_id == em.id)
-        .group_by(CecoviTarea.rol, CecoviTarea.estado)
-    )).all()
+    tareas_rows = (
+        await db.execute(
+            select(CecoviTarea.rol, CecoviTarea.estado, func.count().label("n"))
+            .where(CecoviTarea.emergencia_id == em.id)
+            .group_by(CecoviTarea.rol, CecoviTarea.estado)
+        )
+    ).all()
     tareas_by_rol: dict[str, dict[str, int]] = {}
     for rol, estado, n in tareas_rows:
-        tareas_by_rol.setdefault(
-            rol, {"pending": 0, "accepted": 0, "completed": 0, "cancelled": 0}
-        )
+        tareas_by_rol.setdefault(rol, {"pending": 0, "accepted": 0, "completed": 0, "cancelled": 0})
         tareas_by_rol[rol][estado] = int(n)
     tareas_out = [
         {
@@ -116,12 +116,14 @@ async def pipeline_state(
     primera_sesion_at = (
         min((ses.started_at for ses in sesiones), default=None) if sesiones else None
     )
-    primera_tarea_aceptada = (await db.execute(
-        select(func.min(CecoviTarea.accepted_at)).where(
-            CecoviTarea.emergencia_id == em.id,
-            CecoviTarea.accepted_at.is_not(None),
+    primera_tarea_aceptada = (
+        await db.execute(
+            select(func.min(CecoviTarea.accepted_at)).where(
+                CecoviTarea.emergencia_id == em.id,
+                CecoviTarea.accepted_at.is_not(None),
+            )
         )
-    )).scalar()
+    ).scalar()
 
     etapas = [
         _etapa("Emergencia creada", "creada", em.created_at),
@@ -160,9 +162,7 @@ async def pipeline_state(
                 if ses.usuario_temporal_id
                 else None,
                 "tipo": next((c.tipo for c in creds if c.id == ses.credencial_id), "?"),
-                "roles": next(
-                    (c.roles_list() for c in creds if c.id == ses.credencial_id), []
-                ),
+                "roles": next((c.roles_list() for c in creds if c.id == ses.credencial_id), []),
                 "started_at": ses.started_at.isoformat(),
                 "last_seen_at": ses.last_seen_at.isoformat(),
             }

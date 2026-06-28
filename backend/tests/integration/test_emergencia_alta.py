@@ -46,9 +46,7 @@ async def test_alta_requiere_secreto_webhook(client: AsyncClient) -> None:
     assert r.status_code == 401
     assert r.json()["error"]["code"] == "webhook_unauthorized"
 
-    r = await client.post(
-        "/api/v1/emergencias", json=payload, headers={"X-Webhook-Secret": "nope"}
-    )
+    r = await client.post("/api/v1/emergencias", json=payload, headers={"X-Webhook-Secret": "nope"})
     assert r.status_code == 401
 
 

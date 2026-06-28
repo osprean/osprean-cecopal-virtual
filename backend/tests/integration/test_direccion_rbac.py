@@ -53,7 +53,9 @@ async def test_direccion_solo_lectura(client: AsyncClient, db_session: AsyncSess
     try:
         jefe = await login(client, "dir-3", fake, "direccion")
         await db_session.execute(
-            text("UPDATE cecovi_usuario_temporal SET solo_lectura = true WHERE email = 'direccion@x.es'")
+            text(
+                "UPDATE cecovi_usuario_temporal SET solo_lectura = true WHERE email = 'direccion@x.es'"
+            )
         )
         await db_session.commit()
         r = await client.post(

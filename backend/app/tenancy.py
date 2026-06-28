@@ -68,9 +68,7 @@ async def _decode_and_validate_session(
     jti = claims.get("jti")
     if not jti:
         raise AuthError("Token sin jti", code="token_invalid")
-    stmt = select(CecoviSesion).where(
-        CecoviSesion.jti == jti, CecoviSesion.ended_at.is_(None)
-    )
+    stmt = select(CecoviSesion).where(CecoviSesion.jti == jti, CecoviSesion.ended_at.is_(None))
     sesion = (await db.execute(stmt)).scalar_one_or_none()
     if sesion is None:
         raise AuthError("Sesión terminada", code="sesion_terminada")

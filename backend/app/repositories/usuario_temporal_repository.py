@@ -47,9 +47,7 @@ class UsuarioTemporalRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_by_email(
-        self, *, emergencia_id: int, email: str
-    ) -> CecoviUsuarioTemporal | None:
+    async def get_by_email(self, *, emergencia_id: int, email: str) -> CecoviUsuarioTemporal | None:
         stmt = select(CecoviUsuarioTemporal).where(
             CecoviUsuarioTemporal.emergencia_id == emergencia_id,
             CecoviUsuarioTemporal.email == email,

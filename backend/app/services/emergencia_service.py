@@ -276,8 +276,8 @@ def _render_credencial_html(
     badge_color = "#dc2626" if tipo == "master" else "#f59e0b"
     badge_bg = "#fee2e2" if tipo == "master" else "#fef3c7"
     modo_banner = (
-        "<div style=\"background:#dbeafe;color:#1e3a8a;padding:8px 14px;border-radius:8px;"
-        "font-size:13px;display:inline-block;margin-bottom:16px\">"
+        '<div style="background:#dbeafe;color:#1e3a8a;padding:8px 14px;border-radius:8px;'
+        'font-size:13px;display:inline-block;margin-bottom:16px">'
         "🧪 EMERGENCIA EN MODO SIMULACRO</div>"
         if modo == "simulacro"
         else ""

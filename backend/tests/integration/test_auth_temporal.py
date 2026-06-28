@@ -50,9 +50,7 @@ async def test_sesion_unica_y_force(client: AsyncClient) -> None:
         h1 = await login(client, "auth-ses", fake, "seguridad")
         # segundo login con la misma credencial → 409 sesion_activa
         token = fake.token_for("seguridad@x.es")
-        r = await client.post(
-            "/api/v1/emergencias/auth-ses/auth/login", json={"token": token}
-        )
+        r = await client.post("/api/v1/emergencias/auth-ses/auth/login", json={"token": token})
         assert r.status_code == 409
         assert r.json()["error"]["code"] == "sesion_activa"
         # con force=true → 200 (cierra la anterior)

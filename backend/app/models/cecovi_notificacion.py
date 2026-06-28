@@ -25,9 +25,7 @@ class CecoviNotificacion(Base):
         ForeignKey("cecovi_emergencia.id"), nullable=False, index=True
     )
     rol_destino: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
-    actor_id: Mapped[int | None] = mapped_column(
-        ForeignKey("cecovi_usuario_temporal.id")
-    )
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("cecovi_usuario_temporal.id"))
     tipo: Mapped[str] = mapped_column(String(40), nullable=False)
     mensaje: Mapped[str] = mapped_column(Text, nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(

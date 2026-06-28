@@ -156,9 +156,7 @@ async def list_comunicados(
 async def crear_comunicado(
     emergencia: EmergenciaCtx, principal: Operar, payload: ComunicadoCreate, db: DbSession
 ) -> ComunicadoRead:
-    row = CecoviDirComunicado(
-        emergencia_id=emergencia.id, created_by=None, **payload.model_dump()
-    )
+    row = CecoviDirComunicado(emergencia_id=emergencia.id, created_by=None, **payload.model_dump())
     await OperativoRepo(db).add(row)
     await audit(
         db,

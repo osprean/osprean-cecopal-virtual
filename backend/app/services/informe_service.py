@@ -44,17 +44,17 @@ def _local_pdf_path(slug: str) -> Path:
 async def _agregados(db: AsyncSession, em: CecoviEmergencia) -> dict[str, object]:
     """Calcula los números agregados del informe."""
     # Víctimas
-    stmt_vic = select(CecoviSanVictima.estado, func.count(CecoviSanVictima.id)).where(
-        CecoviSanVictima.emergencia_id == em.id
-    ).group_by(CecoviSanVictima.estado)
+    stmt_vic = (
+        select(CecoviSanVictima.estado, func.count(CecoviSanVictima.id))
+        .where(CecoviSanVictima.emergencia_id == em.id)
+        .group_by(CecoviSanVictima.estado)
+    )
     victimas_por_estado: dict[str, int] = {
         row[0]: row[1] for row in (await db.execute(stmt_vic)).all()
     }
 
     # Cortes viales
-    stmt_cor = select(func.count(CecoviSegCorte.id)).where(
-        CecoviSegCorte.emergencia_id == em.id
-    )
+    stmt_cor = select(func.count(CecoviSegCorte.id)).where(CecoviSegCorte.emergencia_id == em.id)
     cortes = (await db.execute(stmt_cor)).scalar() or 0
 
     # Evacuados (sum)
@@ -64,18 +64,18 @@ async def _agregados(db: AsyncSession, em: CecoviEmergencia) -> dict[str, object
     evacuados = (await db.execute(stmt_ev)).scalar() or 0
 
     # Tareas
-    stmt_tar = select(CecoviTarea.estado, func.count(CecoviTarea.id)).where(
-        CecoviTarea.emergencia_id == em.id
-    ).group_by(CecoviTarea.estado)
+    stmt_tar = (
+        select(CecoviTarea.estado, func.count(CecoviTarea.id))
+        .where(CecoviTarea.emergencia_id == em.id)
+        .group_by(CecoviTarea.estado)
+    )
     tareas_por_estado: dict[str, int] = {
         row[0]: row[1] for row in (await db.execute(stmt_tar)).all()
     }
 
     # Log
     stmt_log = (
-        select(CecoviLog)
-        .where(CecoviLog.emergencia_id == em.id)
-        .order_by(CecoviLog.at.asc())
+        select(CecoviLog).where(CecoviLog.emergencia_id == em.id).order_by(CecoviLog.at.asc())
     )
     logs = (await db.execute(stmt_log)).scalars().all()
 

@@ -71,7 +71,9 @@ async def test_seguridad_solo_lectura_bloquea_escritura(
         seg = await login(client, "rbac-3", fake, "seguridad")
         # marcar al titular de seguridad como solo_lectura (I3)
         await db_session.execute(
-            text("UPDATE cecovi_usuario_temporal SET solo_lectura = true WHERE email = 'seguridad@x.es'")
+            text(
+                "UPDATE cecovi_usuario_temporal SET solo_lectura = true WHERE email = 'seguridad@x.es'"
+            )
         )
         await db_session.commit()
         r = await client.post(
@@ -90,9 +92,7 @@ async def test_logs_solo_jefe(client: AsyncClient) -> None:
     fake = await alta(client, "rbac-4")
     try:
         seg = await login(client, "rbac-4", fake, "seguridad")
-        assert (
-            await client.get("/api/v1/emergencias/rbac-4/logs", headers=seg)
-        ).status_code == 403
+        assert (await client.get("/api/v1/emergencias/rbac-4/logs", headers=seg)).status_code == 403
         jefe = await login(client, "rbac-4", fake, "direccion")
         assert (
             await client.get("/api/v1/emergencias/rbac-4/logs", headers=jefe)

@@ -53,7 +53,9 @@ async def test_sanitario_solo_lectura(client: AsyncClient, db_session: AsyncSess
     try:
         op = await login(client, "san-3", fake, "sanitario")
         await db_session.execute(
-            text("UPDATE cecovi_usuario_temporal SET solo_lectura=true WHERE email='sanitario@x.es'")
+            text(
+                "UPDATE cecovi_usuario_temporal SET solo_lectura=true WHERE email='sanitario@x.es'"
+            )
         )
         await db_session.commit()
         r = await client.post("/api/v1/emergencias/san-3/sanitario/victimas", json=VIC, headers=op)

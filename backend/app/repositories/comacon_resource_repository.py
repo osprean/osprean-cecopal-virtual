@@ -65,8 +65,11 @@ class ComaconResourceRepository:
             await self._session.rollback()
             simple = text(
                 "SELECT resource_id, name, status, kind, NULL AS observations, "
-                + ("ST_Y(localization::geometry) AS lat, ST_X(localization::geometry) AS lng, "
-                   if dialect == "postgresql" else "lat, lng, ")
+                + (
+                    "ST_Y(localization::geometry) AS lat, ST_X(localization::geometry) AS lng, "
+                    if dialect == "postgresql"
+                    else "lat, lng, "
+                )
                 + "NULL AS phone_number, NULL AS organism, NULL AS linked_user_email "
                 "FROM inventory_element WHERE organization_id = :org ORDER BY name"
             )

@@ -120,18 +120,14 @@ class AuthTemporalService:
                     "Credencial backup requiere email para nominar al usuario",
                     code="backup_email_required",
                 )
-            usuario = await self._usuarios.get_by_email(
-                emergencia_id=emergencia_id, email=email
-            )
+            usuario = await self._usuarios.get_by_email(emergencia_id=emergencia_id, email=email)
             if usuario is None:
                 raise AuthError("Email no autorizado", code="email_no_autorizado")
             usuario_id = usuario.id
 
         # Abrir sesión.
         jti = uuid.uuid4().hex
-        sesion = CecoviSesion(
-            credencial_id=cred.id, jti=jti, usuario_temporal_id=usuario_id
-        )
+        sesion = CecoviSesion(credencial_id=cred.id, jti=jti, usuario_temporal_id=usuario_id)
         self._db.add(sesion)
 
         cred.estado = "activa"

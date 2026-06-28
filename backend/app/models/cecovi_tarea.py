@@ -35,9 +35,7 @@ class CecoviTarea(Base):
     # Si se generó desde el diagrama de actividades de COMACON, este es el id
     # del nodo origen. NULL si es placeholder o creada manualmente.
     comacon_activity_id: Mapped[int | None] = mapped_column(Integer)
-    accepted_by_id: Mapped[int | None] = mapped_column(
-        ForeignKey("cecovi_usuario_temporal.id")
-    )
+    accepted_by_id: Mapped[int | None] = mapped_column(ForeignKey("cecovi_usuario_temporal.id"))
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(

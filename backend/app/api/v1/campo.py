@@ -84,9 +84,7 @@ async def list_reportes(emergencia: EmergenciaCtx, _p: Ver, db: DbSession) -> li
 async def crear_reporte(
     emergencia: EmergenciaCtx, principal: Operar, payload: ReporteCreate, db: DbSession
 ) -> ReporteRead:
-    row = CecoviCampoReporte(
-        emergencia_id=emergencia.id, created_by=None, **payload.model_dump()
-    )
+    row = CecoviCampoReporte(emergencia_id=emergencia.id, created_by=None, **payload.model_dump())
     await OperativoRepo(db).add(row)
     await audit(
         db,

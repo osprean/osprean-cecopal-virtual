@@ -41,8 +41,8 @@ class LoggingEmailSender:
 
 class BrevoSmtpEmailSender:
     """Emisor SMTP via Brevo (smtp-relay.brevo.com). Env vars:
-       BREVO_SMTP_HOST, BREVO_SMTP_PORT, BREVO_SMTP_USER, BREVO_SMTP_PASSWORD,
-       BREVO_FROM_ADDRESS (ej. noreply@osprean.com).
+    BREVO_SMTP_HOST, BREVO_SMTP_PORT, BREVO_SMTP_USER, BREVO_SMTP_PASSWORD,
+    BREVO_FROM_ADDRESS (ej. noreply@osprean.com).
     """
 
     def __init__(self, host: str, port: int, user: str, password: str, sender: str) -> None:
@@ -86,13 +86,15 @@ class FileEmailSender:
 
     def __init__(self, base_dir: str) -> None:
         import pathlib
+
         self._base = pathlib.Path(base_dir)
         self._base.mkdir(parents=True, exist_ok=True)
 
     def send(self, message: EmailMessage) -> None:
         from datetime import datetime
+
         ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S-%f")
-        stem = f"{ts}-{message.to.replace('@','_at_')}"
+        stem = f"{ts}-{message.to.replace('@', '_at_')}"
         (self._base / f"{stem}.txt").write_text(
             f"To: {message.to}\nSubject: {message.subject}\n\n{message.body}\n",
             encoding="utf-8",
@@ -120,6 +122,7 @@ class DualEmailSender:
 
 def build_email_sender() -> EmailSender:
     import os
+
     senders: list[EmailSender] = []
     # Sink local: escribe el cuerpo a archivo (incluye token). Útil dev/demo.
     sink_dir = os.getenv("EMAIL_SINK_DIR")

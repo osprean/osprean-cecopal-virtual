@@ -54,7 +54,7 @@ async def pipeline_state(
     slug: str,
     db: DbSession,
     x_webhook_secret: str | None = Header(default=None),
-):
+) -> dict[str, Any]:
     _check_secret(x_webhook_secret)
 
     em = (

@@ -19,7 +19,6 @@ from app.models.cecovi_seguridad import (
     CecoviSegIncidencia,
     CecoviSegPerimetro,
 )
-from app.models.cecovi_usuario_temporal import CecoviUsuarioTemporal
 from app.rbac import require_perm
 from app.repositories.log_repository import LogRepository
 from app.repositories.seguridad_repository import SeguridadRepository
@@ -34,17 +33,17 @@ from app.schemas.seguridad import (
     PerimetroCreate,
     PerimetroRead,
 )
-from app.tenancy import EmergenciaCtx
+from app.tenancy import EmergenciaCtx, SessionCtx
 
 router = APIRouter(prefix="/emergencias", tags=["seguridad"])
 
-Ver = Annotated[CecoviUsuarioTemporal, Depends(require_perm("seguridad:ver"))]
-Operar = Annotated[CecoviUsuarioTemporal, Depends(require_perm("seguridad:operar", write=True))]
+Ver = Annotated[SessionCtx, Depends(require_perm("seguridad:ver"))]
+Operar = Annotated[SessionCtx, Depends(require_perm("seguridad:operar", write=True))]
 P = "/{id_emergencia}/seguridad"
 
 
 async def _audit(
-    db: DbSession, emergencia_id: int, actor_id: int, accion: str, payload: dict[str, Any]
+    db: DbSession, emergencia_id: int, actor_id: int | None, accion: str, payload: dict[str, Any]
 ) -> None:
     await LogRepository(db).add(
         emergencia_id=emergencia_id, accion=accion, actor_usuario_id=actor_id, payload=payload
@@ -80,7 +79,7 @@ async def crear_perimetro(
     await _audit(
         db,
         emergencia.id,
-        principal.id,
+        principal.usuario_id,
         "seguridad:perimetro_creado",
         {"id": row.id, "label": row.label},
     )
@@ -100,7 +99,7 @@ async def estado_perimetro(
     await _audit(
         db,
         emergencia.id,
-        principal.id,
+        principal.usuario_id,
         "seguridad:perimetro_estado",
         {"id": pid, "estado": payload.estado},
     )
@@ -135,7 +134,7 @@ async def crear_acceso(
     await _audit(
         db,
         emergencia.id,
-        principal.id,
+        principal.usuario_id,
         "seguridad:acceso_creado",
         {"id": row.id, "label": row.label},
     )
@@ -155,7 +154,7 @@ async def estado_acceso(
     await _audit(
         db,
         emergencia.id,
-        principal.id,
+        principal.usuario_id,
         "seguridad:acceso_estado",
         {"id": aid, "estado": payload.estado},
     )
@@ -186,7 +185,7 @@ async def crear_corte(
     )
     await SeguridadRepository(db).add(row)
     await _audit(
-        db, emergencia.id, principal.id, "seguridad:corte_creado", {"id": row.id, "road": row.road}
+        db, emergencia.id, principal.usuario_id, "seguridad:corte_creado", {"id": row.id, "road": row.road}
     )
     await db.commit()
     return CorteRead.model_validate(row)
@@ -204,7 +203,7 @@ async def estado_corte(
     await _audit(
         db,
         emergencia.id,
-        principal.id,
+        principal.usuario_id,
         "seguridad:corte_estado",
         {"id": cid, "estado": payload.estado},
     )
@@ -239,7 +238,7 @@ async def crear_incidencia(
     await _audit(
         db,
         emergencia.id,
-        principal.id,
+        principal.usuario_id,
         "seguridad:incidencia_creada",
         {"id": row.id, "title": row.title},
     )
@@ -259,7 +258,7 @@ async def estado_incidencia(
     await _audit(
         db,
         emergencia.id,
-        principal.id,
+        principal.usuario_id,
         "seguridad:incidencia_estado",
         {"id": iid, "estado": payload.estado},
     )

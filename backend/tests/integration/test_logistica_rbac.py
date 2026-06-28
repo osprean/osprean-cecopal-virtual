@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tests.integration._helpers import alta, clear_email_override, login, select_roles
+from tests.integration._helpers import alta, clear_email_override, login
 
 SUM = {"category": "water", "name": "Agua 1.5L", "unit": "pack", "stock": 100, "min_stock": 20}
 
@@ -14,8 +14,7 @@ SUM = {"category": "water", "name": "Agua 1.5L", "unit": "pack", "stock": 100, "
 async def test_logistica_403_sin_permiso(client: AsyncClient) -> None:
     fake = await alta(client, "logi-1")
     try:
-        op = await login(client, "logi-1", fake, "op@x.es")
-        await select_roles(client, "logi-1", op, ["seguridad"])
+        op = await login(client, "logi-1", fake, "seguridad")
         assert (
             await client.post(
                 "/api/v1/emergencias/logi-1/logistica/suministros", json=SUM, headers=op
@@ -31,8 +30,7 @@ async def test_logistica_403_sin_permiso(client: AsyncClient) -> None:
 async def test_logistica_opera_y_audita(client: AsyncClient) -> None:
     fake = await alta(client, "logi-2")
     try:
-        op = await login(client, "logi-2", fake, "op@x.es")
-        await select_roles(client, "logi-2", op, ["logistica"])
+        op = await login(client, "logi-2", fake, "logistica")
         r = await client.post(
             "/api/v1/emergencias/logi-2/logistica/suministros", json=SUM, headers=op
         )
@@ -44,7 +42,7 @@ async def test_logistica_opera_y_audita(client: AsyncClient) -> None:
             headers=op,
         )
         assert r.status_code == 200 and r.json()["stock"] == 70
-        jefe = await login(client, "logi-2", fake, "jefa@x.es")
+        jefe = await login(client, "logi-2", fake, "direccion")
         acciones = {
             x["accion"]
             for x in (await client.get("/api/v1/emergencias/logi-2/logs", headers=jefe)).json()
@@ -57,10 +55,9 @@ async def test_logistica_opera_y_audita(client: AsyncClient) -> None:
 async def test_logistica_solo_lectura(client: AsyncClient, db_session: AsyncSession) -> None:
     fake = await alta(client, "logi-3")
     try:
-        op = await login(client, "logi-3", fake, "op@x.es")
-        await select_roles(client, "logi-3", op, ["logistica"])
+        op = await login(client, "logi-3", fake, "logistica")
         await db_session.execute(
-            text("UPDATE cecovi_usuario_temporal SET solo_lectura=true WHERE email='op@x.es'")
+            text("UPDATE cecovi_usuario_temporal SET solo_lectura=true WHERE email='logistica@x.es'")
         )
         await db_session.commit()
         r = await client.post(
@@ -77,12 +74,10 @@ async def test_logistica_solo_lectura(client: AsyncClient, db_session: AsyncSess
 async def test_logistica_aislamiento(client: AsyncClient) -> None:
     fa = await alta(client, "logi-a")
     try:
-        oa = await login(client, "logi-a", fa, "op@x.es")
-        await select_roles(client, "logi-a", oa, ["logistica"])
+        oa = await login(client, "logi-a", fa, "logistica")
         await client.post("/api/v1/emergencias/logi-a/logistica/suministros", json=SUM, headers=oa)
         fb = await alta(client, "logi-b")
-        ob = await login(client, "logi-b", fb, "op@x.es")
-        await select_roles(client, "logi-b", ob, ["logistica"])
+        ob = await login(client, "logi-b", fb, "logistica")
         assert (
             await client.get("/api/v1/emergencias/logi-b/logistica/suministros", headers=ob)
         ).json() == []

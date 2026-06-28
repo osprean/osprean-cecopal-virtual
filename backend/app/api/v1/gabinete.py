@@ -10,7 +10,6 @@ from app.core.audit import audit
 from app.core.exceptions import NotFoundError
 from app.deps import DbSession
 from app.models.cecovi_gabinete import CecoviGabCanal, CecoviGabPublicacion
-from app.models.cecovi_usuario_temporal import CecoviUsuarioTemporal
 from app.rbac import require_perm
 from app.repositories.operativo_repository import OperativoRepo
 from app.schemas.gabinete import (
@@ -20,12 +19,12 @@ from app.schemas.gabinete import (
     PublicacionCreate,
     PublicacionRead,
 )
-from app.tenancy import EmergenciaCtx
+from app.tenancy import EmergenciaCtx, SessionCtx
 
 router = APIRouter(prefix="/emergencias", tags=["gabinete"])
 
-Ver = Annotated[CecoviUsuarioTemporal, Depends(require_perm("gabinete:ver"))]
-Operar = Annotated[CecoviUsuarioTemporal, Depends(require_perm("gabinete:operar", write=True))]
+Ver = Annotated[SessionCtx, Depends(require_perm("gabinete:ver"))]
+Operar = Annotated[SessionCtx, Depends(require_perm("gabinete:operar", write=True))]
 P = "/{id_emergencia}/gabinete"
 
 
@@ -45,7 +44,7 @@ async def crear_canal(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="gabinete:canal_creado",
         payload={"id": row.id, "kind": row.kind},
     )
@@ -65,7 +64,7 @@ async def estado_canal(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="gabinete:canal_estado",
         payload={"id": cid, "estado": payload.estado},
     )
@@ -94,7 +93,7 @@ async def crear_publicacion(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="gabinete:publicacion_creada",
         payload={"id": row.id},
     )
@@ -114,7 +113,7 @@ async def estado_publicacion(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="gabinete:publicacion_estado",
         payload={"id": pid, "estado": payload.estado},
     )

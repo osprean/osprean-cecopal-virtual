@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tests.integration._helpers import alta, clear_email_override, login, select_roles
+from tests.integration._helpers import alta, clear_email_override, login
 
 VIC = {"code": "VIC-1", "triage": "yellow", "lat": 39.4, "lng": -0.3}
 
@@ -14,8 +14,7 @@ VIC = {"code": "VIC-1", "triage": "yellow", "lat": 39.4, "lng": -0.3}
 async def test_sanitario_403_sin_permiso(client: AsyncClient) -> None:
     fake = await alta(client, "san-1")
     try:
-        op = await login(client, "san-1", fake, "op@x.es")
-        await select_roles(client, "san-1", op, ["seguridad"])  # no sanitario
+        op = await login(client, "san-1", fake, "seguridad")  # no sanitario
         assert (
             await client.post("/api/v1/emergencias/san-1/sanitario/victimas", json=VIC, headers=op)
         ).status_code == 403
@@ -29,8 +28,7 @@ async def test_sanitario_403_sin_permiso(client: AsyncClient) -> None:
 async def test_sanitario_opera_y_audita(client: AsyncClient) -> None:
     fake = await alta(client, "san-2")
     try:
-        op = await login(client, "san-2", fake, "op@x.es")
-        await select_roles(client, "san-2", op, ["sanitario"])
+        op = await login(client, "san-2", fake, "sanitario")
         r = await client.post("/api/v1/emergencias/san-2/sanitario/victimas", json=VIC, headers=op)
         assert r.status_code == 201, r.text
         vid = r.json()["id"]
@@ -40,7 +38,7 @@ async def test_sanitario_opera_y_audita(client: AsyncClient) -> None:
             headers=op,
         )
         assert r.status_code == 200 and r.json()["triage"] == "red"
-        jefe = await login(client, "san-2", fake, "jefa@x.es")
+        jefe = await login(client, "san-2", fake, "direccion")
         acciones = {
             x["accion"]
             for x in (await client.get("/api/v1/emergencias/san-2/logs", headers=jefe)).json()
@@ -53,10 +51,9 @@ async def test_sanitario_opera_y_audita(client: AsyncClient) -> None:
 async def test_sanitario_solo_lectura(client: AsyncClient, db_session: AsyncSession) -> None:
     fake = await alta(client, "san-3")
     try:
-        op = await login(client, "san-3", fake, "op@x.es")
-        await select_roles(client, "san-3", op, ["sanitario"])
+        op = await login(client, "san-3", fake, "sanitario")
         await db_session.execute(
-            text("UPDATE cecovi_usuario_temporal SET solo_lectura=true WHERE email='op@x.es'")
+            text("UPDATE cecovi_usuario_temporal SET solo_lectura=true WHERE email='sanitario@x.es'")
         )
         await db_session.commit()
         r = await client.post("/api/v1/emergencias/san-3/sanitario/victimas", json=VIC, headers=op)
@@ -71,12 +68,10 @@ async def test_sanitario_solo_lectura(client: AsyncClient, db_session: AsyncSess
 async def test_sanitario_aislamiento(client: AsyncClient) -> None:
     fa = await alta(client, "san-a")
     try:
-        oa = await login(client, "san-a", fa, "op@x.es")
-        await select_roles(client, "san-a", oa, ["sanitario"])
+        oa = await login(client, "san-a", fa, "sanitario")
         await client.post("/api/v1/emergencias/san-a/sanitario/victimas", json=VIC, headers=oa)
         fb = await alta(client, "san-b")
-        ob = await login(client, "san-b", fb, "op@x.es")
-        await select_roles(client, "san-b", ob, ["sanitario"])
+        ob = await login(client, "san-b", fb, "sanitario")
         assert (
             await client.get("/api/v1/emergencias/san-b/sanitario/victimas", headers=ob)
         ).json() == []

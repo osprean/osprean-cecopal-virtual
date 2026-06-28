@@ -56,10 +56,14 @@ async def test_rol_destino_la_recibe_y_marca_leida(client: AsyncClient) -> None:
 
 async def test_polling_since(client: AsyncClient) -> None:
     """Filtro since= devuelve solo notificaciones posteriores."""
+    import asyncio
+
     fake = await alta(client, "notif-3")
     try:
         jefe = await login(client, "notif-3", fake, "direccion")
-        r1 = await client.post("/api/v1/emergencias/notif-3/notificaciones", json=NOTIF, headers=jefe)
+        r1 = await client.post(
+            "/api/v1/emergencias/notif-3/notificaciones", json=NOTIF, headers=jefe
+        )
         ts1 = r1.json()["created_at"]
         # Listar con since=ts1 → debería devolver vacío (no hay notifs > ts1).
         seg = await login(client, "notif-3", fake, "seguridad")
@@ -67,8 +71,12 @@ async def test_polling_since(client: AsyncClient) -> None:
             f"/api/v1/emergencias/notif-3/notificaciones?since={ts1}", headers=seg
         )
         assert r.json() == []
-        # Crear una más
-        await client.post("/api/v1/emergencias/notif-3/notificaciones", json=NOTIF, headers=jefe)
+        # Espera para que la siguiente notificación tenga timestamp > ts1
+        # (el filtro server-side usa > estricto).
+        await asyncio.sleep(1.1)
+        await client.post(
+            "/api/v1/emergencias/notif-3/notificaciones", json=NOTIF, headers=jefe
+        )
         r = await client.get(
             f"/api/v1/emergencias/notif-3/notificaciones?since={ts1}", headers=seg
         )

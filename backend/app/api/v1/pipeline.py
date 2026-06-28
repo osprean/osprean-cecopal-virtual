@@ -16,7 +16,7 @@ from typing import Any
 from fastapi import APIRouter, Header, HTTPException, status
 from sqlalchemy import func, select
 
-from app.config import settings
+from app.config import get_settings
 from app.deps import DbSession
 from app.models.cecovi_credencial import CecoviCredencial
 from app.models.cecovi_emergencia import CecoviEmergencia
@@ -30,6 +30,7 @@ router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 def _check_secret(x_webhook_secret: str | None) -> None:
     # COMACON firma sus llamadas a CECOVI con este secret (mismo valor en ambos
     # lados); el FE de COMACON nunca llama a este endpoint directamente.
+    settings = get_settings()
     secret = getattr(settings, "COMACON_WEBHOOK_SECRET", None)
     if not secret:
         return  # permisivo en dev

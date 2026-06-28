@@ -151,7 +151,12 @@ class EmergenciaService:
             n_master += 1
             token = construir_token(cred.id, secreto)
             self._enviar_credencial(
-                modo=modo, destinatario=p.email, slug=slug, token=token, tipo="master", rol=",".join(rol_list)
+                modo=modo,
+                destinatario=p.email,
+                slug=slug,
+                token=token,
+                tipo="master",
+                rol=",".join(rol_list),
             )
             await self._d.logs.add(
                 emergencia_id=emergencia.id,
@@ -277,9 +282,13 @@ def _render_credencial_html(
         if modo == "simulacro"
         else ""
     )
+    body_style = (
+        "margin:0;padding:32px 16px;background:#f1f5f9;"
+        "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif"
+    )
     return f"""<!doctype html>
 <html lang="es">
-<body style="margin:0;padding:32px 16px;background:#f1f5f9;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+<body style="{body_style}">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0"
          style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;
                 box-shadow:0 4px 24px rgba(0,0,0,.08);overflow:hidden">

@@ -72,13 +72,21 @@ async def _agregados(db: AsyncSession, em: CecoviEmergencia) -> dict[str, object
     }
 
     # Log
-    stmt_log = select(CecoviLog).where(CecoviLog.emergencia_id == em.id).order_by(CecoviLog.at.asc())
+    stmt_log = (
+        select(CecoviLog)
+        .where(CecoviLog.emergencia_id == em.id)
+        .order_by(CecoviLog.at.asc())
+    )
     logs = (await db.execute(stmt_log)).scalars().all()
 
     duracion_min: int | None = None
     if em.finalizada_at and em.created_at:
         ini = em.created_at.replace(tzinfo=UTC) if em.created_at.tzinfo is None else em.created_at
-        fin = em.finalizada_at.replace(tzinfo=UTC) if em.finalizada_at.tzinfo is None else em.finalizada_at
+        fin = (
+            em.finalizada_at.replace(tzinfo=UTC)
+            if em.finalizada_at.tzinfo is None
+            else em.finalizada_at
+        )
         duracion_min = int((fin - ini).total_seconds() // 60)
 
     return {

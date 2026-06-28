@@ -3,6 +3,7 @@ solo_lectura (I3) y lectura de recursos COMACON acotada por org."""
 
 from __future__ import annotations
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -121,6 +122,16 @@ async def test_recursos_comacon_solo_lectura_acotado_por_org(
 ) -> None:
     # Stub que imita el esquema real de COMACON con columna `localization`
     # (geometry POINT 4326). El repo usa ST_X/ST_Y en dialect postgresql.
+    # Solo Postgres+PostGIS — saltamos en SQLite o en Postgres sin PostGIS.
+    dialect = db_session.bind.dialect.name if db_session.bind else ""
+    if dialect != "postgresql":
+        pytest.skip("Requiere PostgreSQL")
+    try:
+        await db_session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        await db_session.commit()
+    except Exception:
+        await db_session.rollback()
+        pytest.skip("Requiere extensión PostGIS")
     await db_session.execute(text("DROP TABLE IF EXISTS inventory_element"))
     await db_session.commit()
     await db_session.execute(

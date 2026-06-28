@@ -10,15 +10,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cecovi_tarea import CecoviTarea
 
-
 # Plantillas placeholder por rol (las del minuto cero). Reuniones piden que la
 # fuente real sea el diagrama de actividades del PAMIF de COMACON; mientras se
 # integra eso, esto cubre la operación inicial de cualquier emergencia.
 PLACEHOLDERS: dict[str, list[tuple[str, str, str]]] = {
     "direccion": [
         ("DIR-1", "Confirmar la emergencia", "Validar tipo, gravedad y nivel operativo."),
-        ("DIR-2", "Notificar al CECOPAL", "Convocar al puesto de mando y a los responsables de área."),
-        ("DIR-3", "Decidir nivel operativo", "Fijar el nivel (0/1/2/3) y comunicar a todas las áreas."),
+        (
+            "DIR-2",
+            "Notificar al CECOPAL",
+            "Convocar al puesto de mando y a los responsables de área.",
+        ),
+        (
+            "DIR-3",
+            "Decidir nivel operativo",
+            "Fijar el nivel (0/1/2/3) y comunicar a todas las áreas.",
+        ),
     ],
     "logistica": [
         ("LOG-1", "Inventariar recursos disponibles", "Revisar suministros y vehículos en ruta."),
@@ -29,7 +36,11 @@ PLACEHOLDERS: dict[str, list[tuple[str, str, str]]] = {
         ("SAN-2", "Alertar hospitales de referencia", "Comunicar volumen esperado de heridos."),
     ],
     "seguridad": [
-        ("SEG-1", "Establecer perímetro de seguridad", "Marcar zona de exclusión y accesos controlados."),
+        (
+            "SEG-1",
+            "Establecer perímetro de seguridad",
+            "Marcar zona de exclusión y accesos controlados.",
+        ),
         ("SEG-2", "Coordinar tráfico", "Definir cortes viales y rutas de evacuación."),
     ],
     "gabinete": [

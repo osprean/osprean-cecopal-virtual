@@ -52,7 +52,11 @@ async def test_alta_requiere_secreto_webhook(client: AsyncClient) -> None:
     assert r.status_code == 401
 
 
-async def test_simulacro_no_envia_a_destinatarios_reales(client: AsyncClient) -> None:
+async def test_simulacro_envia_emails_con_marca(client: AsyncClient) -> None:
+    """En el nuevo modelo, simulacro reutiliza los HRs reales del diagrama del
+    plan en COMACON; los emails se envían al rsoter real pero el HTML lleva una
+    marca clara de 'EMERGENCIA EN MODO SIMULACRO' para que el destinatario sepa
+    que no es real."""
     fake = FakeEmailSender()
     app.dependency_overrides[get_email_sender] = lambda: fake
     try:
@@ -60,8 +64,12 @@ async def test_simulacro_no_envia_a_destinatarios_reales(client: AsyncClient) ->
         payload["modo"] = "simulacro"
         r = await client.post("/api/v1/emergencias", json=payload, headers=SECRET)
         assert r.status_code == 201
-        # Sin SIMULACRO_EMAIL_SINK configurado, no se contacta a nadie real.
-        assert fake.sent == []
+        # Sí se envía a los destinatarios reales: el simulacro lo lanza un
+        # operador desde COMACON eligiendo plan+diagrama; el roster es real.
+        assert len(fake.sent) > 0
+        msg = fake.sent[0]
+        # La marca visual del modo viene en el HTML.
+        assert msg.html and "SIMULACRO" in msg.html.upper()
     finally:
         app.dependency_overrides.pop(get_email_sender, None)
 

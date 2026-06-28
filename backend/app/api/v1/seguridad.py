@@ -185,7 +185,11 @@ async def crear_corte(
     )
     await SeguridadRepository(db).add(row)
     await _audit(
-        db, emergencia.id, principal.usuario_id, "seguridad:corte_creado", {"id": row.id, "road": row.road}
+        db,
+        emergencia.id,
+        principal.usuario_id,
+        "seguridad:corte_creado",
+        {"id": row.id, "road": row.road},
     )
     await db.commit()
     return CorteRead.model_validate(row)

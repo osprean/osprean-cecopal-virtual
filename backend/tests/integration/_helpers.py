@@ -79,10 +79,7 @@ async def login(
 
     `suffix=""` → titular del rol. `suffix="sup"` → suplente (login backup con email).
     """
-    if suffix == "":
-        email = f"{area}@x.es"
-    else:
-        email = f"{area}-{suffix}@x.es"
+    email = f"{area}@x.es" if suffix == "" else f"{area}-{suffix}@x.es"
     token = fake.token_for(email)
     assert token, f"sin token para {email}"
     body: dict = {"token": token, "force": force}

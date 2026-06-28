@@ -17,9 +17,11 @@ class FakeEmailSender:
         self.sent.append(message)
 
     def token_for(self, email: str) -> str | None:
+        marker = "credencial temporal:"
         for m in self.sent:
             if m.to == email:
                 for line in m.body.splitlines():
-                    if "credencial temporal:" in line:
-                        return line.split("credencial temporal:", 1)[1].strip()
+                    if marker in line.lower():
+                        idx = line.lower().index(marker) + len(marker)
+                        return line[idx:].strip()
         return None

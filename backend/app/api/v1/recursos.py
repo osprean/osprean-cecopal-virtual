@@ -11,12 +11,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.deps import DbSession
-from app.models.cecovi_usuario_temporal import CecoviUsuarioTemporal
 from app.rbac import require_perm
 from app.repositories.comacon_resource_repository import ComaconResourceRepository
 from app.repositories.log_repository import LogRepository
 from app.schemas.seguridad import LogRead, RecursoComaconRead
-from app.tenancy import EmergenciaCtx
+from app.tenancy import EmergenciaCtx, SessionCtx
 
 router = APIRouter(prefix="/emergencias", tags=["recursos"])
 
@@ -28,7 +27,7 @@ router = APIRouter(prefix="/emergencias", tags=["recursos"])
 )
 async def list_recursos(
     emergencia: EmergenciaCtx,
-    _principal: Annotated[CecoviUsuarioTemporal, Depends(require_perm("recursos:ver"))],
+    _principal: Annotated[SessionCtx, Depends(require_perm("recursos:ver"))],
     db: DbSession,
 ) -> list[RecursoComaconRead]:
     rows = await ComaconResourceRepository(db).list_by_org(emergencia.organization_id)
@@ -42,7 +41,7 @@ async def list_recursos(
 )
 async def list_logs(
     emergencia: EmergenciaCtx,
-    _principal: Annotated[CecoviUsuarioTemporal, Depends(require_perm("logs:ver"))],
+    _principal: Annotated[SessionCtx, Depends(require_perm("logs:ver"))],
     db: DbSession,
 ) -> list[LogRead]:
     rows = await LogRepository(db).list_by_emergencia(emergencia.id)

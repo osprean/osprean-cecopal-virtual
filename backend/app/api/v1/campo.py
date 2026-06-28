@@ -10,7 +10,6 @@ from app.core.audit import audit
 from app.core.exceptions import NotFoundError
 from app.deps import DbSession
 from app.models.cecovi_campo import CecoviCampoReporte, CecoviCampoTarea
-from app.models.cecovi_usuario_temporal import CecoviUsuarioTemporal
 from app.rbac import require_perm
 from app.repositories.operativo_repository import OperativoRepo
 from app.schemas.campo import (
@@ -20,12 +19,12 @@ from app.schemas.campo import (
     TareaCreate,
     TareaRead,
 )
-from app.tenancy import EmergenciaCtx
+from app.tenancy import EmergenciaCtx, SessionCtx
 
 router = APIRouter(prefix="/emergencias", tags=["campo"])
 
-Ver = Annotated[CecoviUsuarioTemporal, Depends(require_perm("campo:ver"))]
-Operar = Annotated[CecoviUsuarioTemporal, Depends(require_perm("campo:operar", write=True))]
+Ver = Annotated[SessionCtx, Depends(require_perm("campo:ver"))]
+Operar = Annotated[SessionCtx, Depends(require_perm("campo:operar", write=True))]
 P = "/{id_emergencia}/campo"
 
 
@@ -45,7 +44,7 @@ async def crear_tarea(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="campo:tarea_creada",
         payload={"id": row.id, "code": row.code},
     )
@@ -65,7 +64,7 @@ async def estado_tarea(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="campo:tarea_estado",
         payload={"id": tid, "estado": payload.estado},
     )
@@ -85,14 +84,12 @@ async def list_reportes(emergencia: EmergenciaCtx, _p: Ver, db: DbSession) -> li
 async def crear_reporte(
     emergencia: EmergenciaCtx, principal: Operar, payload: ReporteCreate, db: DbSession
 ) -> ReporteRead:
-    row = CecoviCampoReporte(
-        emergencia_id=emergencia.id, created_by=principal.nombre, **payload.model_dump()
-    )
+    row = CecoviCampoReporte(emergencia_id=emergencia.id, created_by=None, **payload.model_dump())
     await OperativoRepo(db).add(row)
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="campo:reporte_creado",
         payload={"id": row.id, "kind": row.kind},
     )

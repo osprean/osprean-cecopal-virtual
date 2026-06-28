@@ -17,6 +17,7 @@ from app.models.cecovi_logistica import (
     CecoviLogiSolicitud,
     CecoviLogiSuministro,
 )
+from app.models.cecovi_notificacion import CecoviNotificacion
 from app.models.cecovi_rol_seleccion import CecoviRolSeleccion
 from app.models.cecovi_sanitario import CecoviSanAlerta, CecoviSanVictima, CecoviSanZona
 from app.models.cecovi_seguridad import (
@@ -25,6 +26,8 @@ from app.models.cecovi_seguridad import (
     CecoviSegIncidencia,
     CecoviSegPerimetro,
 )
+from app.models.cecovi_sesion import CecoviSesion
+from app.models.cecovi_tarea import CecoviTarea
 from app.models.cecovi_usuario_temporal import CecoviUsuarioTemporal
 from app.models.item import Item
 from app.models.user import User
@@ -45,6 +48,7 @@ __all__ = [
     "CecoviLogiServicio",
     "CecoviLogiSolicitud",
     "CecoviLogiSuministro",
+    "CecoviNotificacion",
     "CecoviRolSeleccion",
     "CecoviSanAlerta",
     "CecoviSanVictima",
@@ -53,6 +57,8 @@ __all__ = [
     "CecoviSegCorte",
     "CecoviSegIncidencia",
     "CecoviSegPerimetro",
+    "CecoviSesion",
+    "CecoviTarea",
     "CecoviUsuarioTemporal",
     "Item",
     "User",

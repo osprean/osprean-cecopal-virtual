@@ -17,9 +17,11 @@ class CredencialRepository:
         self,
         *,
         emergencia_id: int,
-        usuario_temporal_id: int,
+        usuario_temporal_id: int | None,
         token_hash: str,
         expira_at: datetime,
+        tipo: str = "master",
+        roles: str = "",
     ) -> CecoviCredencial:
         cred = CecoviCredencial(
             emergencia_id=emergencia_id,
@@ -27,6 +29,8 @@ class CredencialRepository:
             token_hash=token_hash,
             estado="emitida",
             expira_at=expira_at,
+            tipo=tipo,
+            roles=roles,
         )
         self._session.add(cred)
         await self._session.flush()

@@ -14,9 +14,16 @@ class AppError(Exception):
     status_code: int = status.HTTP_400_BAD_REQUEST
     code: str = "app_error"
 
-    def __init__(self, message: str, *, code: str | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str | None = None,
+        extra: dict[str, object] | None = None,
+    ) -> None:
         super().__init__(message)
         self.message = message
+        self.extra: dict[str, object] = extra or {}
         if code:
             self.code = code
 
@@ -48,9 +55,12 @@ async def _app_error_handler(request: Request, exc: AppError) -> JSONResponse:
         code=exc.code,
         message=exc.message,
     )
+    payload: dict[str, object] = {"code": exc.code, "message": exc.message}
+    if exc.extra:
+        payload.update(exc.extra)
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": {"code": exc.code, "message": exc.message}},
+        content={"error": payload},
     )
 
 

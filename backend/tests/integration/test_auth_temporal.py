@@ -1,144 +1,113 @@
-"""Login temporal (cierra el 403 del resolver) + selección de roles inmutable (I4)."""
+"""P3 — auth temporal: master/backup, sesión única, fuerza, logout, expulsión
+de backups cuando master entra."""
 
 from __future__ import annotations
 
 from httpx import AsyncClient
 
-from app.deps import get_email_sender
-from app.main import app
-from tests.integration.conftest_email import FakeEmailSender
-
-SECRET = {"X-Webhook-Secret": "dev-webhook-secret-change-me"}
+from tests.integration._helpers import alta, clear_email_override, login
 
 
-async def _alta(client: AsyncClient, slug: str) -> FakeEmailSender:
-    fake = FakeEmailSender()
-    app.dependency_overrides[get_email_sender] = lambda: fake
-    payload = {
-        "organization_id": 1,
-        "slug": slug,
-        "modo": "real",
-        "participantes": [
-            {"nombre": "Jefa", "email": "jefa@x.es", "nivel": "cecopal", "es_jefe": True},
-            {
-                "nombre": "Conc",
-                "email": "conc@x.es",
-                "telefono": "+34600000001",
-                "nivel": "cecopal",
-                "es_jefe": False,
-            },
-        ],
-    }
-    r = await client.post("/api/v1/emergencias", json=payload, headers=SECRET)
-    assert r.status_code == 201, r.text
-    return fake
-
-
-async def _login(client: AsyncClient, slug: str, token: str) -> str:
-    r = await client.post(f"/api/v1/emergencias/{slug}/auth/login", json={"token": token})
-    assert r.status_code == 200, r.text
-    return str(r.json()["access_token"])
-
-
-async def test_login_cierra_403_del_resolver(client: AsyncClient) -> None:
-    fake = await _alta(client, "tx-1")
+async def test_login_master_devuelve_roles_y_tipo(client: AsyncClient) -> None:
+    fake = await alta(client, "auth-1")
     try:
-        # F1: sin credencial → 403.
-        r = await client.get("/api/v1/emergencias/tx-1")
-        assert r.status_code == 403
-
-        token = fake.token_for("jefa@x.es")
-        assert token is not None
-        access = await _login(client, "tx-1", token)
-
-        # Con el JWT (claim emergencia_id) el resolver concede acceso.
-        r = await client.get(
-            "/api/v1/emergencias/tx-1", headers={"Authorization": f"Bearer {access}"}
-        )
-        assert r.status_code == 200, r.text
-        assert r.json()["slug"] == "tx-1"
+        h = await login(client, "auth-1", fake, "direccion")
+        me = (await client.get("/api/v1/emergencias/auth-1/auth/me", headers=h)).json()
+        assert me["tipo"] == "master"
+        assert me["roles"] == ["direccion"]
+        assert me["usuario_id"] is not None
     finally:
-        app.dependency_overrides.pop(get_email_sender, None)
+        clear_email_override()
 
 
-async def test_token_de_otra_emergencia_da_403(client: AsyncClient) -> None:
-    fake_a = await _alta(client, "tx-a")
-    await _alta(client, "tx-b")  # sobrescribe override, da igual: solo necesitamos que exista
+async def test_login_de_otra_emergencia_da_403(client: AsyncClient) -> None:
+    fa = await alta(client, "auth-a")
     try:
-        token_a = fake_a.token_for("jefa@x.es")
-        assert token_a is not None
-        access_a = await _login(client, "tx-a", token_a)
-        # Token de tx-a contra la ruta tx-b → 403 (aislamiento).
-        r = await client.get(
-            "/api/v1/emergencias/tx-b", headers={"Authorization": f"Bearer {access_a}"}
-        )
+        ha = await login(client, "auth-a", fa, "seguridad")
+        await alta(client, "auth-b")
+        r = await client.get("/api/v1/emergencias/auth-b", headers=ha)
         assert r.status_code == 403
         assert r.json()["error"]["code"] == "emergencia_forbidden"
     finally:
-        app.dependency_overrides.pop(get_email_sender, None)
+        clear_email_override()
 
 
-async def test_login_credencial_invalida(client: AsyncClient) -> None:
-    await _alta(client, "tx-bad")
+async def test_credencial_invalida(client: AsyncClient) -> None:
+    await alta(client, "auth-bad")
     try:
         r = await client.post(
-            "/api/v1/emergencias/tx-bad/auth/login", json={"token": "999.deadbeef"}
+            "/api/v1/emergencias/auth-bad/auth/login", json={"token": "999.deadbeef"}
         )
         assert r.status_code == 401
         assert r.json()["error"]["code"] == "bad_credential"
     finally:
-        app.dependency_overrides.pop(get_email_sender, None)
+        clear_email_override()
 
 
-async def test_seleccion_roles_libre_y_luego_inmutable(client: AsyncClient) -> None:
-    fake = await _alta(client, "tx-roles")
+async def test_sesion_unica_y_force(client: AsyncClient) -> None:
+    fake = await alta(client, "auth-ses")
     try:
-        token = fake.token_for("conc@x.es")
-        assert token is not None
-        access = await _login(client, "tx-roles", token)
-        h = {"Authorization": f"Bearer {access}"}
-
-        # Primer acceso: aún no confirmados.
-        me = (await client.get("/api/v1/emergencias/tx-roles/auth/me", headers=h)).json()
-        assert me["roles_confirmados"] is False
-        assert me["roles"] == []
-        # telefono fluye webhook → cecovi_usuario_temporal → /me.
-        assert me["telefono"] == "+34600000001"
-
-        # Elige libremente varios roles.
-        r = await client.post(
-            "/api/v1/emergencias/tx-roles/roles/seleccion",
-            json={"roles": ["seguridad", "logistica"]},
-            headers=h,
-        )
-        assert r.status_code == 200, r.text
-        assert set(r.json()["roles"]) == {"seguridad", "logistica"}
-        assert r.json()["roles_confirmados"] is True
-
-        # I4: tras confirmar, inmutable → 409.
-        r = await client.post(
-            "/api/v1/emergencias/tx-roles/roles/seleccion",
-            json={"roles": ["sanitario"]},
-            headers=h,
-        )
+        h1 = await login(client, "auth-ses", fake, "seguridad")
+        # segundo login con la misma credencial → 409 sesion_activa
+        token = fake.token_for("seguridad@x.es")
+        r = await client.post("/api/v1/emergencias/auth-ses/auth/login", json={"token": token})
         assert r.status_code == 409
-        assert r.json()["error"]["code"] == "roles_inmutables"
+        assert r.json()["error"]["code"] == "sesion_activa"
+        # con force=true → 200 (cierra la anterior)
+        h2 = await login(client, "auth-ses", fake, "seguridad", force=True)
+        # h1 ahora debería estar expulsado (jti antiguo no válido)
+        r1 = await client.get("/api/v1/emergencias/auth-ses/auth/me", headers=h1)
+        assert r1.status_code == 401
+        assert r1.json()["error"]["code"] == "sesion_terminada"
+        # h2 sigue OK
+        assert (
+            await client.get("/api/v1/emergencias/auth-ses/auth/me", headers=h2)
+        ).status_code == 200
     finally:
-        app.dependency_overrides.pop(get_email_sender, None)
+        clear_email_override()
 
 
-async def test_no_se_puede_elegir_jefe(client: AsyncClient) -> None:
-    fake = await _alta(client, "tx-nojefe")
+async def test_master_deshabilita_backup(client: AsyncClient) -> None:
+    fake = await alta(client, "auth-mb", con_suplentes=True)
     try:
-        token = fake.token_for("conc@x.es")
-        assert token is not None
-        access = await _login(client, "tx-nojefe", token)
-        r = await client.post(
-            "/api/v1/emergencias/tx-nojefe/roles/seleccion",
-            json={"roles": ["jefe"]},
-            headers={"Authorization": f"Bearer {access}"},
-        )
-        assert r.status_code == 400
-        assert r.json()["error"]["code"] == "rol_no_seleccionable"
+        # backup entra primero (suplente de seguridad)
+        h_bk = await login(client, "auth-mb", fake, "seguridad", suffix="sup")
+        # backup puede leer
+        assert (
+            await client.get("/api/v1/emergencias/auth-mb/auth/me", headers=h_bk)
+        ).status_code == 200
+        # llega el master de seguridad
+        h_master = await login(client, "auth-mb", fake, "seguridad")
+        # backup queda fuera (sesión cerrada por master_in)
+        r = await client.get("/api/v1/emergencias/auth-mb/auth/me", headers=h_bk)
+        assert r.status_code == 401
+        assert r.json()["error"]["code"] == "sesion_terminada"
+        # master OK
+        assert (
+            await client.get("/api/v1/emergencias/auth-mb/auth/me", headers=h_master)
+        ).status_code == 200
     finally:
-        app.dependency_overrides.pop(get_email_sender, None)
+        clear_email_override()
+
+
+async def test_logout_reactiva_backups(client: AsyncClient) -> None:
+    fake = await alta(client, "auth-lo", con_suplentes=True)
+    try:
+        h_master = await login(client, "auth-lo", fake, "seguridad")
+        # backup deshabilitada → login backup falla
+        token_bk = fake.token_for("seguridad-sup@x.es")
+        r = await client.post(
+            "/api/v1/emergencias/auth-lo/auth/login",
+            json={"token": token_bk, "email": "seguridad-sup@x.es"},
+        )
+        assert r.status_code == 401  # credencial deshabilitada
+        # master hace logout
+        r = await client.post("/api/v1/emergencias/auth-lo/auth/logout", headers=h_master)
+        assert r.status_code == 204
+        # ahora backup vuelve a funcionar
+        h_bk = await login(client, "auth-lo", fake, "seguridad", suffix="sup")
+        assert (
+            await client.get("/api/v1/emergencias/auth-lo/auth/me", headers=h_bk)
+        ).status_code == 200
+    finally:
+        clear_email_override()

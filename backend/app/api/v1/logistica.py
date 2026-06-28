@@ -15,7 +15,6 @@ from app.models.cecovi_logistica import (
     CecoviLogiSolicitud,
     CecoviLogiSuministro,
 )
-from app.models.cecovi_usuario_temporal import CecoviUsuarioTemporal
 from app.rbac import require_perm
 from app.repositories.operativo_repository import OperativoRepo
 from app.schemas.logistica import (
@@ -28,12 +27,12 @@ from app.schemas.logistica import (
     SuministroCreate,
     SuministroRead,
 )
-from app.tenancy import EmergenciaCtx
+from app.tenancy import EmergenciaCtx, SessionCtx
 
 router = APIRouter(prefix="/emergencias", tags=["logistica"])
 
-Ver = Annotated[CecoviUsuarioTemporal, Depends(require_perm("logistica:ver"))]
-Operar = Annotated[CecoviUsuarioTemporal, Depends(require_perm("logistica:operar", write=True))]
+Ver = Annotated[SessionCtx, Depends(require_perm("logistica:ver"))]
+Operar = Annotated[SessionCtx, Depends(require_perm("logistica:operar", write=True))]
 P = "/{id_emergencia}/logistica"
 
 
@@ -55,7 +54,7 @@ async def crear_suministro(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="logistica:suministro_creado",
         payload={"id": row.id, "name": row.name},
     )
@@ -78,7 +77,7 @@ async def ajustar_stock(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="logistica:stock_ajustado",
         payload={"id": sid, "delta": payload.delta, "stock": nuevo},
     )
@@ -105,7 +104,7 @@ async def crear_solicitud(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="logistica:solicitud_creada",
         payload={"id": row.id},
     )
@@ -126,7 +125,7 @@ async def decidir_solicitud(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="logistica:solicitud_decidida",
         payload={"id": sid, "estado": payload.estado},
     )
@@ -151,7 +150,7 @@ async def crear_servicio(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="logistica:servicio_creado",
         payload={"id": row.id},
     )
@@ -171,7 +170,7 @@ async def estado_servicio(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="logistica:servicio_estado",
         payload={"id": sid, "estado": payload.estado},
     )

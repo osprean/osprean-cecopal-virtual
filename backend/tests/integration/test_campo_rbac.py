@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tests.integration._helpers import alta, clear_email_override, login, select_roles
+from tests.integration._helpers import alta, clear_email_override, login
 
 TAREA = {"code": "T-1", "title": "Reconocer zona", "priority": "high"}
 
@@ -14,8 +14,7 @@ TAREA = {"code": "T-1", "title": "Reconocer zona", "priority": "high"}
 async def test_campo_403_sin_permiso(client: AsyncClient) -> None:
     fake = await alta(client, "campo-1")
     try:
-        op = await login(client, "campo-1", fake, "op@x.es")
-        await select_roles(client, "campo-1", op, ["seguridad"])
+        op = await login(client, "campo-1", fake, "seguridad")
         assert (
             await client.post("/api/v1/emergencias/campo-1/campo/tareas", json=TAREA, headers=op)
         ).status_code == 403
@@ -29,8 +28,7 @@ async def test_campo_403_sin_permiso(client: AsyncClient) -> None:
 async def test_campo_opera_y_audita(client: AsyncClient) -> None:
     fake = await alta(client, "campo-2")
     try:
-        op = await login(client, "campo-2", fake, "op@x.es")
-        await select_roles(client, "campo-2", op, ["campo"])
+        op = await login(client, "campo-2", fake, "campo")
         r = await client.post("/api/v1/emergencias/campo-2/campo/tareas", json=TAREA, headers=op)
         assert r.status_code == 201, r.text
         tid = r.json()["id"]
@@ -40,7 +38,7 @@ async def test_campo_opera_y_audita(client: AsyncClient) -> None:
             headers=op,
         )
         assert r.status_code == 200 and r.json()["estado"] == "accepted"
-        jefe = await login(client, "campo-2", fake, "jefa@x.es")
+        jefe = await login(client, "campo-2", fake, "direccion")
         acciones = {
             x["accion"]
             for x in (await client.get("/api/v1/emergencias/campo-2/logs", headers=jefe)).json()
@@ -53,10 +51,9 @@ async def test_campo_opera_y_audita(client: AsyncClient) -> None:
 async def test_campo_solo_lectura(client: AsyncClient, db_session: AsyncSession) -> None:
     fake = await alta(client, "campo-3")
     try:
-        op = await login(client, "campo-3", fake, "op@x.es")
-        await select_roles(client, "campo-3", op, ["campo"])
+        op = await login(client, "campo-3", fake, "campo")
         await db_session.execute(
-            text("UPDATE cecovi_usuario_temporal SET solo_lectura=true WHERE email='op@x.es'")
+            text("UPDATE cecovi_usuario_temporal SET solo_lectura=true WHERE email='campo@x.es'")
         )
         await db_session.commit()
         r = await client.post("/api/v1/emergencias/campo-3/campo/tareas", json=TAREA, headers=op)
@@ -71,12 +68,10 @@ async def test_campo_solo_lectura(client: AsyncClient, db_session: AsyncSession)
 async def test_campo_aislamiento(client: AsyncClient) -> None:
     fa = await alta(client, "campo-a")
     try:
-        oa = await login(client, "campo-a", fa, "op@x.es")
-        await select_roles(client, "campo-a", oa, ["campo"])
+        oa = await login(client, "campo-a", fa, "campo")
         await client.post("/api/v1/emergencias/campo-a/campo/tareas", json=TAREA, headers=oa)
         fb = await alta(client, "campo-b")
-        ob = await login(client, "campo-b", fb, "op@x.es")
-        await select_roles(client, "campo-b", ob, ["campo"])
+        ob = await login(client, "campo-b", fb, "campo")
         assert (
             await client.get("/api/v1/emergencias/campo-b/campo/tareas", headers=ob)
         ).json() == []

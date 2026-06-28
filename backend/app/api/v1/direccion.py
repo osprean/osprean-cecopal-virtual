@@ -22,7 +22,6 @@ from app.models.cecovi_direccion import (
     CecoviDirGrupo,
     CecoviDirSolicitudMedios,
 )
-from app.models.cecovi_usuario_temporal import CecoviUsuarioTemporal
 from app.rbac import require_perm
 from app.repositories.operativo_repository import OperativoRepo
 from app.schemas.direccion import (
@@ -40,12 +39,12 @@ from app.schemas.direccion import (
     SolicitudMediosCreate,
     SolicitudMediosRead,
 )
-from app.tenancy import EmergenciaCtx
+from app.tenancy import EmergenciaCtx, SessionCtx
 
 router = APIRouter(prefix="/emergencias", tags=["direccion"])
 
-Ver = Annotated[CecoviUsuarioTemporal, Depends(require_perm("direccion:ver"))]
-Operar = Annotated[CecoviUsuarioTemporal, Depends(require_perm("direccion:operar", write=True))]
+Ver = Annotated[SessionCtx, Depends(require_perm("direccion:ver"))]
+Operar = Annotated[SessionCtx, Depends(require_perm("direccion:operar", write=True))]
 P = "/{id_emergencia}/direccion"
 
 
@@ -65,7 +64,7 @@ async def crear_grupo(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="direccion:grupo_creado",
         payload={"id": row.id, "tipo": row.tipo},
     )
@@ -85,7 +84,7 @@ async def estado_grupo(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="direccion:grupo_estado",
         payload={"id": gid, "estado": payload.estado},
     )
@@ -114,7 +113,7 @@ async def crear_solicitud(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="direccion:solicitud_creada",
         payload={"id": row.id},
     )
@@ -135,7 +134,7 @@ async def decidir_solicitud(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="direccion:solicitud_decidida",
         payload={"id": sid, "estado": payload.estado},
     )
@@ -157,14 +156,12 @@ async def list_comunicados(
 async def crear_comunicado(
     emergencia: EmergenciaCtx, principal: Operar, payload: ComunicadoCreate, db: DbSession
 ) -> ComunicadoRead:
-    row = CecoviDirComunicado(
-        emergencia_id=emergencia.id, created_by=principal.nombre, **payload.model_dump()
-    )
+    row = CecoviDirComunicado(emergencia_id=emergencia.id, created_by=None, **payload.model_dump())
     await OperativoRepo(db).add(row)
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="direccion:comunicado_creado",
         payload={"id": row.id},
     )
@@ -184,7 +181,7 @@ async def estado_comunicado(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="direccion:comunicado_estado",
         payload={"id": cid, "estado": payload.estado},
     )
@@ -209,7 +206,7 @@ async def crear_albergue(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="direccion:albergue_creado",
         payload={"id": row.id, "name": row.name},
     )
@@ -229,7 +226,7 @@ async def ocupacion_albergue(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="direccion:albergue_ocupacion",
         payload={"id": aid, "occupancy": payload.occupancy},
     )
@@ -258,7 +255,7 @@ async def crear_evacuacion(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="direccion:evacuacion_creada",
         payload={"id": row.id, "name": row.name},
     )
@@ -278,7 +275,7 @@ async def estado_evacuacion(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="direccion:evacuacion_estado",
         payload={"id": eid, "estado": payload.estado},
     )
@@ -299,7 +296,7 @@ async def evacuados_evacuacion(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="direccion:evacuacion_evacuados",
         payload={"id": eid, "evacuated": payload.evacuated_people},
     )

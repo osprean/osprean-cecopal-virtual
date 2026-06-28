@@ -1,5 +1,10 @@
 import { create } from "zustand";
-import { cecoviApi, getAuthToken, setAuthToken, type Me } from "../services/cecoviApi";
+import {
+  cecoviApi,
+  getAuthToken,
+  setAuthToken,
+  type Me,
+} from "../services/cecoviApi";
 
 interface AuthState {
   token: string | null;
@@ -7,23 +12,26 @@ interface AuthState {
   me: Me | null;
   loading: boolean;
   error: string | null;
-  login: (slug: string, credential: string) => Promise<void>;
+  login: (
+    slug: string,
+    credential: string,
+    opts?: { email?: string; force?: boolean },
+  ) => Promise<void>;
   loadMe: (slug: string) => Promise<void>;
-  seleccionarRoles: (slug: string, roles: string[]) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   token: getAuthToken(),
   slug: null,
   me: null,
   loading: false,
   error: null,
 
-  login: async (slug, credential) => {
+  login: async (slug, credential, opts = {}) => {
     set({ loading: true, error: null });
     try {
-      const res = await cecoviApi.login(slug, credential);
+      const res = await cecoviApi.login(slug, credential, opts);
       setAuthToken(res.access_token);
       set({ token: res.access_token, slug });
       const me = await cecoviApi.me(slug);
@@ -46,18 +54,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  seleccionarRoles: async (slug, roles) => {
-    set({ loading: true, error: null });
+  logout: async () => {
+    const { slug } = get();
     try {
-      const me = await cecoviApi.seleccionarRoles(slug, roles);
-      set({ me, loading: false });
-    } catch (e: any) {
-      set({ loading: false, error: e?.message || "No se pudo confirmar la selección" });
-      throw e;
+      if (slug) await cecoviApi.logout(slug);
+    } catch {
+      /* ignore */
     }
-  },
-
-  logout: () => {
     setAuthToken(null);
     set({ token: null, me: null, slug: null, error: null });
   },

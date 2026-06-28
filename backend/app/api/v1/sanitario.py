@@ -10,7 +10,6 @@ from app.core.audit import audit
 from app.core.exceptions import NotFoundError
 from app.deps import DbSession
 from app.models.cecovi_sanitario import CecoviSanAlerta, CecoviSanVictima, CecoviSanZona
-from app.models.cecovi_usuario_temporal import CecoviUsuarioTemporal
 from app.rbac import require_perm
 from app.repositories.operativo_repository import OperativoRepo
 from app.schemas.sanitario import (
@@ -23,12 +22,12 @@ from app.schemas.sanitario import (
     ZonaCreate,
     ZonaRead,
 )
-from app.tenancy import EmergenciaCtx
+from app.tenancy import EmergenciaCtx, SessionCtx
 
 router = APIRouter(prefix="/emergencias", tags=["sanitario"])
 
-Ver = Annotated[CecoviUsuarioTemporal, Depends(require_perm("sanitario:ver"))]
-Operar = Annotated[CecoviUsuarioTemporal, Depends(require_perm("sanitario:operar", write=True))]
+Ver = Annotated[SessionCtx, Depends(require_perm("sanitario:ver"))]
+Operar = Annotated[SessionCtx, Depends(require_perm("sanitario:operar", write=True))]
 P = "/{id_emergencia}/sanitario"
 
 
@@ -48,7 +47,7 @@ async def crear_victima(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="sanitario:victima_registrada",
         payload={"id": row.id, "code": row.code},
     )
@@ -68,7 +67,7 @@ async def triaje_victima(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="sanitario:triaje_actualizado",
         payload={"id": vid, "triage": payload.triage},
     )
@@ -93,7 +92,7 @@ async def crear_zona(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="sanitario:zona_creada",
         payload={"id": row.id},
     )
@@ -113,7 +112,7 @@ async def estado_zona(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="sanitario:zona_estado",
         payload={"id": zid, "estado": payload.estado},
     )
@@ -138,7 +137,7 @@ async def crear_alerta(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="sanitario:alerta_creada",
         payload={"id": row.id},
     )
@@ -158,7 +157,7 @@ async def ack_alerta(
     await audit(
         db,
         emergencia_id=emergencia.id,
-        actor_id=principal.id,
+        actor_id=principal.usuario_id,
         accion="sanitario:alerta_ack",
         payload={"id": aid},
     )

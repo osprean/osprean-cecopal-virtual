@@ -4,8 +4,9 @@
 .github/
 
 # Python
-__pycache__/
+**/__pycache__/
 *.py[cod]
+**/.venv/
 .venv/
 venv/
 .pytest_cache/
@@ -17,7 +18,9 @@ coverage.xml
 *.egg-info/
 
 # Node
+**/node_modules/
 node_modules/
+**/dist/
 frontend/dist/
 .pnpm-store/
 

@@ -18,7 +18,7 @@ tier: backend
 # === Imagen ==================================================================
 image:
   repository: comacon.azurecr.io/cecovi-backend
-  tag: sha-PLACEHOLDER # CD lo bumpea (formato sha-<7-char-commit>)
+  tag: sha-1525a17 # primer deploy (build manual); luego el CD lo bumpea
   pullPolicy: IfNotPresent
 
 replicaCount: 1

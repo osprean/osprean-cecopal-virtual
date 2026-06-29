@@ -35,7 +35,11 @@ resources:
 
 # === Configuración (env NO secretas → ConfigMap) =============================
 configuration:
-  ENV: staging
+  # production: FastAPI sirve la SPA (frontend/dist). Con cualquier otro valor
+  # main.py NO monta el frontend y "/" devuelve 404. is_production también
+  # endurece el manejo de errores. (Es el CECOVI "real", aunque corra en el
+  # cluster de staging.)
+  ENV: production
   LOG_LEVEL: INFO
   # ─── DB compartida con COMACON ────────────────────────────────────────────
   # DATABASE_URL se construye en config.py a partir de DB_USER/DB_HOST/DB_NAME +

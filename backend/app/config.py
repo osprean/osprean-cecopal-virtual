@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import Annotated, Literal
+from urllib.parse import quote_plus
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 Env = Literal["development", "staging", "production", "test"]
@@ -25,6 +26,16 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://app:app@localhost:5432/app",
         description="DSN async SQLAlchemy. En tests se sobrescribe.",
     )
+
+    # --- Conexión por partes (cluster) ----------------------------------------
+    # En k8s el password viene de un Secret (ESO desde Azure KV) y NO debe ir en
+    # el ConfigMap. Si POSTGRES_PASSWORD está presente, DATABASE_URL se construye
+    # a partir de estas piezas (ver model_validator). Comparte el MISMO Postgres
+    # que COMACON (db `comacon`) para que resuelvan las FK a organization/etc.
+    DB_USER: str = ""
+    DB_HOST: str = ""  # host:puerto, p.ej. pg-comacon-staging-rw.data.svc.cluster.local:5432
+    DB_NAME: str = ""
+    POSTGRES_PASSWORD: str = ""
 
     JWT_SECRET_KEY: str = Field(
         default="dev-insecure-change-me",
@@ -59,6 +70,18 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [o.strip() for o in value.split(",") if o.strip()]
         return value
+
+    @model_validator(mode="after")
+    def _build_database_url(self) -> Settings:
+        """En cluster, reconstruye DATABASE_URL desde las piezas + el password
+        del Secret. Solo si POSTGRES_PASSWORD está presente; si no, se respeta
+        DATABASE_URL tal cual (dev/tests)."""
+        if self.POSTGRES_PASSWORD and self.DB_HOST and self.DB_USER and self.DB_NAME:
+            pw = quote_plus(self.POSTGRES_PASSWORD)
+            self.DATABASE_URL = (
+                f"postgresql+asyncpg://{self.DB_USER}:{pw}@{self.DB_HOST}/{self.DB_NAME}"
+            )
+        return self
 
     @property
     def is_production(self) -> bool:

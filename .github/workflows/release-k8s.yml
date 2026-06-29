@@ -1,0 +1,60 @@
+# Promoción a producción: re-taggea (sin rebuild) la imagen de staging que ya
+# pasó, de sha-<7> a vX.Y.Z. Mismo patrón que comacon_web_backend (release-k8s).
+#
+# Lee el tag actual de k8s/values.yaml (la imagen validada en staging) y hace
+# `az acr import` para crear la tag SemVer apuntando al MISMO digest.
+#
+# NOTA: el cluster de PRODUCCIÓN de CECOVI aún no existe. Cuando exista, este
+# workflow debe además bumpear el índice argocd de producción.
+name: release-k8s
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag SemVer a publicar (ej. v1.0.0)"
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGISTRY: comacon.azurecr.io
+  IMAGE_NAME: cecovi-backend
+
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tags
+        id: meta
+        run: |
+          REL="${{ github.event.inputs.tag || github.ref_name }}"
+          SRC_TAG=$(yq '.image.tag' k8s/values.yaml)
+          echo "release_tag=${REL}" >> "$GITHUB_OUTPUT"
+          echo "src_tag=${SRC_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CD_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify source image exists
+        run: az acr repository show-tags --name "${REGISTRY%%.*}" --repository "${IMAGE_NAME}" --output tsv | grep -qx "${{ steps.meta.outputs.src_tag }}"
+
+      - name: Retag (import, sin rebuild) sha-xxx -> vX.Y.Z
+        run: |
+          az acr import --name "${REGISTRY%%.*}" --force \
+            --source "${REGISTRY}/${IMAGE_NAME}:${{ steps.meta.outputs.src_tag }}" \
+            --image "${IMAGE_NAME}:${{ steps.meta.outputs.release_tag }}"
+
+      - name: TODO prod index bump
+        run: echo "Cluster de producción de CECOVI pendiente — bump del índice argocd de prod cuando exista."

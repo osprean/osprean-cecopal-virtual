@@ -1,0 +1,169 @@
+# =============================================================================
+# k8s/values.yaml — deploy declarativo de cecovi-backend (CECOPAL Virtual).
+# =============================================================================
+# Lo consume ArgoCD multi-source: chart umbrella osprean/comacon-helm-charts
+# (charts/comacon-service) + estos values. Una sola imagen: FastAPI sirve la
+# API y la SPA (frontend/dist). Comparte el Postgres de COMACON (db `comacon`).
+#
+# CD (cd-staging-k8s.yml) bumpea image.tag en cada push a la rama de deploy.
+# =============================================================================
+
+# === Identidad ===============================================================
+# componentName define el nombre de TODOS los recursos k8s, incluido el Service.
+# El Service resultante es cecovi-backend.comacon.svc.cluster.local:8000, que es
+# justo lo que COMACON tiene en CECOVI_WEBHOOK_URL.
+componentName: cecovi-backend
+tier: backend
+
+# === Imagen ==================================================================
+image:
+  repository: comacon.azurecr.io/cecovi-backend
+  tag: sha-PLACEHOLDER # CD lo bumpea (formato sha-<7-char-commit>)
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# === Recursos ================================================================
+# FastAPI async + WeasyPrint (PDF en cierre). Generoso hasta tener métricas.
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
+
+# === Configuración (env NO secretas → ConfigMap) =============================
+configuration:
+  ENV: staging
+  LOG_LEVEL: INFO
+  # ─── DB compartida con COMACON ────────────────────────────────────────────
+  # DATABASE_URL se construye en config.py a partir de DB_USER/DB_HOST/DB_NAME +
+  # POSTGRES_PASSWORD (secret), así el password NO va en el ConfigMap. Misma db
+  # `comacon` → las FK de cecovi_* a organization/emergencies/usuario resuelven.
+  DB_USER: comacon
+  DB_HOST: pg-comacon-staging-rw.data.svc.cluster.local:5432
+  DB_NAME: comacon
+  # El initContainer corre las migraciones; el contenedor principal NO (su
+  # entrypoint.sh las saltaría con RUN_MIGRATIONS=0).
+  RUN_MIGRATIONS: "0"
+  # ─── Frontend / CORS ──────────────────────────────────────────────────────
+  PUBLIC_FRONTEND_BASE: https://cecovi.staging.osprean.net
+  CORS_ORIGINS: https://cecovi.staging.osprean.net
+  # ─── Email (Brevo SMTP — host/port/user/from, NO el password) ─────────────
+  # Los lee build_email_sender() vía os.getenv. El password va por ESO (abajo).
+  BREVO_SMTP_HOST: smtp-relay.brevo.com
+  BREVO_SMTP_PORT: "587"
+  BREVO_SMTP_USER: a8009c001@smtp-brevo.com
+  BREVO_FROM_ADDRESS: noreply@osprean.com
+  # ⚠️ NO setear EMAIL_SINK_DIR ni SIMULACRO_EMAIL_SINK en este entorno
+  # (escribirían tokens al disco / redirigirían emails de simulacro).
+
+# === Secretos (env desde Azure KV vía External Secrets Operator) =============
+# Cada entrada genera un ExternalSecret contra el ClusterSecretStore
+# `azure-keyvault` (KV kv-comacon-staging).
+security:
+  secretStoreRef:
+    name: azure-keyvault
+    kind: ClusterSecretStore
+  refreshInterval: 1h
+  secretConfigurations:
+    # Password del Postgres compartido (REUTILIZA la key de COMACON).
+    - keyVaultKey: core-api-postgres-password
+      envVarName: POSTGRES_PASSWORD
+    # Secret HS256 para firmar los JWT temporales de CECOVI.
+    - keyVaultKey: cecovi-jwt-secret
+      envVarName: JWT_SECRET_KEY
+    # Secreto compartido del webhook COMACON↔CECOVI. MISMA key que COMACON usa
+    # para CECOVI_WEBHOOK_SECRET → los valores coinciden automáticamente.
+    - keyVaultKey: core-api-cecovi-webhook-secret
+      envVarName: COMACON_WEBHOOK_SECRET
+    # Password SMTP de Brevo (envío real de emails de credenciales/simulacro).
+    - keyVaultKey: cecovi-brevo-smtp-password
+      envVarName: BREVO_SMTP_PASSWORD
+
+# === Init containers — migraciones Alembic (solo tablas cecovi_*) ============
+# Corre `alembic upgrade head` (version_table propia alembic_version_cecovi)
+# antes de arrancar el contenedor principal. Idempotente. Misma imagen + env.
+initContainers:
+  - name: migrate
+    image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+    workingDir: /app
+    command: ["alembic", "upgrade", "head"]
+    envFrom:
+      - configMapRef:
+          name: '{{ include "comacon-service.configMapName" . }}'
+      - secretRef:
+          name: '{{ include "comacon-service.secretName" . }}'
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop: [ALL]
+
+# === Routes (Ingress público + TLS) ==========================================
+# nginx-public LB; cert-manager emite cert LE-prod; external-dns crea el A
+# record de cecovi.staging.osprean.net automáticamente.
+routes:
+  - host: cecovi.staging.osprean.net
+    ingressClass: nginx-public
+    tls: true
+    paths:
+      - path: /
+        pathType: Prefix
+        port: 8000
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/proxy-body-size: 25m
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+
+# === Service =================================================================
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+
+# === Probes (FastAPI /health/{live,ready}) ===================================
+probes:
+  liveness:
+    enabled: true
+    path: /health/live
+    port: 8000
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    path: /health/ready
+    port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# === SecurityContext (la imagen corre como uid 1001) =========================
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false # WeasyPrint/alembic escriben /tmp
+  capabilities:
+    drop: [ALL]
+
+# === ServiceAccount ==========================================================
+# CECOVI no habla con la API de k8s → no monta el token.
+serviceAccount:
+  create: true
+  automountServiceAccountToken: false
+
+workloadIdentity:
+  enabled: false
+podDisruptionBudget:
+  enabled: false

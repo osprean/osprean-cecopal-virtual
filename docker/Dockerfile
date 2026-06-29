@@ -47,8 +47,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     ENV=production \
     FRONTEND_DIST_PATH=/app/frontend/dist
 
+# libpq5: driver Postgres. curl: probes/debug.
+# Resto: libs NATIVAS que WeasyPrint carga en runtime (cairo/pango/gdk-pixbuf
+# + shared-mime-info + libffi/libxml/libxslt). Sin ellas el endpoint de cierre
+# con PDF (POST /{id}/finalizar) revienta al importar weasyprint.
+# fonts-dejavu-core: fuentes para que el PDF renderice texto (si no, vacío).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends libpq5 curl \
+ && apt-get install -y --no-install-recommends \
+      libpq5 curl \
+      libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 \
+      shared-mime-info libffi-dev libxml2-dev libxslt1-dev fonts-dejavu-core \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 1001 app \
  && useradd  --system --uid 1001 --gid app --create-home --home-dir /home/app app

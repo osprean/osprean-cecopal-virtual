@@ -1,0 +1,82 @@
+# Build + push de la imagen a ACR y bump del tag en k8s/values.yaml.
+# Mismo patrón que comacon_web_backend (cd-staging-k8s.yml).
+#
+# Push a main → build amd64 → push comacon.azurecr.io/cecovi-backend:sha-<7> →
+# yq bump de k8s/values.yaml → commit [skip ci]. ArgoCD detecta el cambio en
+# k8s/values.yaml (multi-source) y despliega.
+name: cd-staging-k8s
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "docker/**"
+      - "pyproject.toml"
+      - ".github/workflows/cd-staging-k8s.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # commit del bump de k8s/values.yaml
+  id-token: write # OIDC para azure/login
+
+concurrency:
+  group: cd-staging-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: comacon.azurecr.io
+  IMAGE_NAME: cecovi-backend
+
+jobs:
+  build-and-deploy:
+    # amd64 nativo — el cluster k3s staging es x86.
+    runs-on: ubuntu-24.04
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image tag
+        id: meta
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "tag=sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CD_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR login
+        run: az acr login --name "${REGISTRY%%.*}"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          provenance: false
+
+      - name: Bump image tag in k8s/values.yaml
+        run: |
+          yq -i '.image.tag = "${{ steps.meta.outputs.tag }}"' k8s/values.yaml
+
+      - name: Commit & push bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add k8s/values.yaml
+          git commit -m "chore(cd): bump image tag to ${{ steps.meta.outputs.tag }} [skip ci]" || exit 0
+          git push

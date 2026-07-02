@@ -47,6 +47,8 @@ class CecoviEmergencia(Base):
     archivada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # P11: ruta del PDF del informe (S3 key o filesystem local en dev).
     informe_pdf_path: Mapped[str | None] = mapped_column(String(512))
+    # Ruta del PNG del organigrama del CECOPAL (snapshot recibido de COMACON).
+    organigrama_png_path: Mapped[str | None] = mapped_column(String(512))
 
     __table_args__ = (
         CheckConstraint(

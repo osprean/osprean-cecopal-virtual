@@ -51,6 +51,9 @@ class CrearEmergenciaIn(BaseModel):
     slug: str = Field(min_length=1, max_length=64, pattern="^[a-z0-9][a-z0-9-]*$")
     modo: str = Field(pattern="^(real|simulacro)$")
     roles: list[RolIn] = Field(min_length=1)
+    # Snapshot PNG del organigrama del CECOPAL capturado en COMACON (data URL o
+    # base64 pelado). Opcional: si no llega, la emergencia se crea sin imagen.
+    organigrama_png_b64: str | None = None
 
 
 class EmergenciaCreada(BaseModel):

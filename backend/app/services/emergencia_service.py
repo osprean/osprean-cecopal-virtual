@@ -18,8 +18,11 @@ Cómo se nominan los `cecovi_usuario_temporal`:
 
 from __future__ import annotations
 
+import base64
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,6 +40,27 @@ from app.schemas.emergencia import ParticipanteIn, RolIn
 from app.services.tareas_service import crear_tareas_iniciales
 
 ROL_DIRECCION = "direccion"
+
+log = logging.getLogger(__name__)
+
+
+def _store_organigrama_png(slug: str, data_url_or_b64: str) -> str | None:
+    """Decodifica el PNG (data URL o base64 pelado) y lo guarda en local.
+
+    Sigue el patrón de `informe_pdf_path` (./var/...). Devuelve la ruta o None
+    si el base64 es inválido (no bloquea el alta de la emergencia).
+    """
+    try:
+        raw = data_url_or_b64.split(",", 1)[-1]  # quita el prefijo `data:image/png;base64,`
+        png = base64.b64decode(raw, validate=True)
+    except Exception:  # base64 corrupto no debe tumbar el webhook
+        log.warning("organigrama_png_b64 inválido para slug=%s; se ignora", slug)
+        return None
+    base = Path("./var/organigramas")
+    base.mkdir(parents=True, exist_ok=True)
+    out = base / f"{slug}-organigrama.png"
+    out.write_bytes(png)
+    return str(out)
 
 
 @dataclass
@@ -63,6 +87,7 @@ class EmergenciaService:
         slug: str,
         modo: str,
         roles: list[RolIn],
+        organigrama_png_b64: str | None = None,
     ) -> tuple[int, str, int, int, int | None]:
         """Crea la emergencia, los usuarios y emite master/backup por rol.
 
@@ -92,6 +117,13 @@ class EmergenciaService:
             slug=slug,
             modo=modo,
         )
+
+        # Snapshot del organigrama (opcional/best-effort): se persiste como PNG.
+        if organigrama_png_b64:
+            path = _store_organigrama_png(slug, organigrama_png_b64)
+            if path is not None:
+                emergencia.organigrama_png_path = path
+                await self._d.db.flush()
 
         await self._d.logs.add(
             emergencia_id=emergencia.id,

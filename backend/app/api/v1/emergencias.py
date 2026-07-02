@@ -13,13 +13,15 @@ La transferencia (P10), overlay (F5) y PDF/cierre (P11) NO van aquí.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Header, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr, Field
 
 from app.config import get_settings
-from app.core.exceptions import AuthError
+from app.core.exceptions import AuthError, NotFoundError
 from app.deps import DbSession, EmailSenderDep, Hasher, TokenSvc
 from app.repositories.credencial_repository import CredencialRepository
 from app.repositories.emergencia_repository import EmergenciaRepository
@@ -81,6 +83,7 @@ async def crear_emergencia(
         slug=payload.slug,
         modo=payload.modo,
         roles=payload.roles,
+        organigrama_png_b64=payload.organigrama_png_b64,
     )
     await db.commit()
     return EmergenciaCreada(
@@ -100,6 +103,29 @@ async def crear_emergencia(
 )
 async def get_emergencia(emergencia: EmergenciaCtx) -> EmergenciaRead:
     return EmergenciaRead.model_validate(emergencia)
+
+
+@router.get(
+    "/{id_emergencia}/organigrama.png",
+    summary="Organigrama del CECOPAL (PNG) — visible para todos en la emergencia",
+)
+async def get_organigrama(emergencia: EmergenciaCtx) -> FileResponse:
+    """Sirve el snapshot PNG del organigrama recibido de COMACON al crear la
+    emergencia. EmergenciaCtx ya exige credencial válida para esta emergencia."""
+    if not emergencia.organigrama_png_path:
+        raise NotFoundError(
+            "No hay organigrama para esta emergencia", code="organigrama_no_disponible"
+        )
+    p = Path(emergencia.organigrama_png_path)
+    if not p.exists():
+        raise NotFoundError(
+            "Archivo del organigrama no encontrado en disco", code="organigrama_missing"
+        )
+    return FileResponse(
+        path=str(p),
+        media_type="image/png",
+        filename=f"{emergencia.slug}-organigrama.png",
+    )
 
 
 @router.post(
